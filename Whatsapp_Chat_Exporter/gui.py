@@ -355,46 +355,74 @@ GUI_TEMPLATE = r'''
         <!-- Connected Mode Tab -->
         <div id="panel-connected" class="hidden fade-in">
             <div class="space-y-6">
+                <!-- Guide -->
                 <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-2">Connected Mode - Key Retrieval</h2>
-                    <p class="text-sm text-gray-500 mb-6">Retrieve your WhatsApp backup encryption key via phone verification. You must own the phone number.</p>
+                    <h2 class="text-lg font-semibold text-gray-800 mb-2">How to Get Your Encryption Key</h2>
+                    <p class="text-sm text-gray-500 mb-4">One key decrypts ALL crypt15 backups from the same account. The key only changes if you reinstall WhatsApp.</p>
 
                     <div class="space-y-4">
+                        <!-- Method 1 -->
+                        <div class="border border-green-200 rounded-lg p-4 bg-green-50/50">
+                            <h3 class="font-semibold text-green-800 text-sm mb-2">Method 1: From WhatsApp Settings (easiest)</h3>
+                            <ol class="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+                                <li>Open <b>WhatsApp</b> on your phone</li>
+                                <li>Go to <b>Settings &gt; Chats &gt; Chat Backup</b></li>
+                                <li>Tap <b>"End-to-end Encrypted Backup"</b></li>
+                                <li>Your <b>64-character key</b> is displayed</li>
+                                <li>Take a <b>screenshot</b> or copy the characters</li>
+                            </ol>
+                        </div>
+
+                        <!-- Method 2 -->
+                        <div class="border border-blue-200 rounded-lg p-4 bg-blue-50/50">
+                            <h3 class="font-semibold text-blue-800 text-sm mb-2">Method 2: From key file (rooted Android)</h3>
+                            <p class="text-sm text-gray-700">The key file is at: <code class="bg-gray-100 px-1 rounded text-xs">/data/data/com.whatsapp/files/encrypted_backup.key</code></p>
+                            <p class="text-sm text-gray-700 mt-1">Copy it to your PC with ADB, then provide the path below.</p>
+                        </div>
+
+                        <!-- Method 3 -->
+                        <div class="border border-purple-200 rounded-lg p-4 bg-purple-50/50">
+                            <h3 class="font-semibold text-purple-800 text-sm mb-2">Method 3: Using wa-crypt-tools</h3>
+                            <p class="text-sm text-gray-700"><code class="bg-gray-100 px-1 rounded text-xs">pip install wa-crypt-tools</code> then follow its docs.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Key Input -->
+                <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Enter Your Key</h2>
+                    <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number (with country code)</label>
-                            <input type="text" id="connPhone" placeholder="+33612345678"
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Paste 64 hex characters (with or without spaces)</label>
+                            <textarea id="connKeyInput" rows="3" placeholder="e.g. a1 b2 c3 d4 e5 f6 ... (64 hex characters)"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none"></textarea>
+                        </div>
+                        <div class="text-center text-gray-400 text-xs">- OR -</div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Key file path</label>
+                            <input type="text" id="connKeyFile" placeholder="C:\path\to\encrypted_backup.key"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
                         </div>
+                        <div class="text-center text-gray-400 text-xs">- OR -</div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">Verification Method</label>
-                            <div class="flex gap-4">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="conn_method" value="sms" checked class="text-whatsapp"> SMS
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="conn_method" value="voice" class="text-whatsapp"> Voice Call
-                                </label>
-                            </div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Screenshot of the key (OCR extraction)</label>
+                            <input type="text" id="connKeyScreenshot" placeholder="C:\path\to\screenshot.png"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
                         </div>
-                        <button type="button" onclick="requestCode()" id="requestCodeBtn"
-                                class="px-6 py-2.5 bg-whatsapp text-white rounded-lg text-sm font-semibold hover:bg-whatsapp-dark transition-colors">
-                            Request Code
-                        </button>
 
-                        <div id="codeSection" class="hidden border-t pt-4 mt-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-600 mb-1">Verification Code (6 digits)</label>
-                                <input type="text" id="connCode" placeholder="123456" maxlength="6"
-                                       class="w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm tracking-widest text-center text-lg focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
-                            </div>
-                            <button type="button" onclick="verifyCode()" id="verifyCodeBtn"
-                                    class="mt-3 px-6 py-2.5 bg-whatsapp text-white rounded-lg text-sm font-semibold hover:bg-whatsapp-dark transition-colors">
-                                Verify & Get Key
+                        <div class="flex gap-3">
+                            <button type="button" onclick="validateAndUseKey()"
+                                    class="px-6 py-2.5 bg-whatsapp text-white rounded-lg text-sm font-semibold hover:bg-whatsapp-dark transition-colors">
+                                Validate & Use Key
+                            </button>
+                            <button type="button" onclick="extractFromAdb()"
+                                    class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+                                Extract via ADB
                             </button>
                         </div>
 
                         <div id="connResult" class="hidden mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <p class="text-sm font-medium text-green-800">Encryption Key Retrieved:</p>
+                            <p class="text-sm font-medium text-green-800">Key validated successfully!</p>
                             <code id="connKey" class="block mt-2 p-2 bg-white rounded border text-xs font-mono break-all"></code>
                             <button type="button" onclick="useRetrievedKey()" class="mt-3 px-4 py-2 bg-whatsapp text-white rounded-lg text-sm hover:bg-whatsapp-dark">
                                 Use This Key for Export
@@ -642,42 +670,23 @@ GUI_TEMPLATE = r'''
     }
 
     // Connected mode handlers
-    async function requestCode() {
-        const phone = document.getElementById('connPhone').value.trim();
-        const method = document.querySelector('input[name="conn_method"]:checked').value;
-        if (!phone) { alert('Enter your phone number'); return; }
-        const btn = document.getElementById('requestCodeBtn');
-        btn.disabled = true; btn.textContent = 'Sending...';
+    async function validateAndUseKey() {
+        const keyInput = document.getElementById('connKeyInput').value.trim();
+        const keyFile = document.getElementById('connKeyFile').value.trim();
+        const keyScreenshot = document.getElementById('connKeyScreenshot').value.trim();
         document.getElementById('connError').classList.add('hidden');
-        try {
-            const resp = await fetch('/api/connected/request-code', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({phone, method})
-            });
-            const result = await resp.json();
-            if (result.error) {
-                document.getElementById('connErrorMsg').textContent = result.error;
-                document.getElementById('connError').classList.remove('hidden');
-            } else {
-                document.getElementById('codeSection').classList.remove('hidden');
-            }
-        } catch(e) {
-            document.getElementById('connErrorMsg').textContent = e.message;
-            document.getElementById('connError').classList.remove('hidden');
-        } finally { btn.disabled = false; btn.textContent = 'Request Code'; }
-    }
+        document.getElementById('connResult').classList.add('hidden');
 
-    async function verifyCode() {
-        const phone = document.getElementById('connPhone').value.trim();
-        const code = document.getElementById('connCode').value.trim();
-        if (!code || code.length !== 6) { alert('Enter the 6-digit code'); return; }
-        const btn = document.getElementById('verifyCodeBtn');
-        btn.disabled = true; btn.textContent = 'Verifying...';
-        document.getElementById('connError').classList.add('hidden');
+        const payload = {};
+        if (keyInput) payload.key_hex = keyInput;
+        else if (keyFile) payload.key_file = keyFile;
+        else if (keyScreenshot) payload.key_image = keyScreenshot;
+        else { alert('Enter a key, file path, or screenshot path'); return; }
+
         try {
-            const resp = await fetch('/api/connected/verify', {
+            const resp = await fetch('/api/connected/validate-key', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({phone, code})
+                body: JSON.stringify(payload)
             });
             const result = await resp.json();
             if (result.error) {
@@ -686,14 +695,30 @@ GUI_TEMPLATE = r'''
             } else if (result.key) {
                 document.getElementById('connKey').textContent = result.key;
                 document.getElementById('connResult').classList.remove('hidden');
-            } else {
-                document.getElementById('connErrorMsg').textContent = 'Key not found in response. Use WhatsApp Settings > Chats > Chat Backup to find it.';
-                document.getElementById('connError').classList.remove('hidden');
             }
         } catch(e) {
             document.getElementById('connErrorMsg').textContent = e.message;
             document.getElementById('connError').classList.remove('hidden');
-        } finally { btn.disabled = false; btn.textContent = 'Verify & Get Key'; }
+        }
+    }
+
+    async function extractFromAdb() {
+        document.getElementById('connError').classList.add('hidden');
+        document.getElementById('connResult').classList.add('hidden');
+        try {
+            const resp = await fetch('/api/connected/adb-extract', { method: 'POST' });
+            const result = await resp.json();
+            if (result.error) {
+                document.getElementById('connErrorMsg').textContent = result.error;
+                document.getElementById('connError').classList.remove('hidden');
+            } else if (result.key) {
+                document.getElementById('connKey').textContent = result.key;
+                document.getElementById('connResult').classList.remove('hidden');
+            }
+        } catch(e) {
+            document.getElementById('connErrorMsg').textContent = e.message;
+            document.getElementById('connError').classList.remove('hidden');
+        }
     }
 
     function useRetrievedKey() {
@@ -1036,37 +1061,52 @@ def create_app() -> 'Flask':
 
         return jsonify({"chats": chats})
 
-    @app.route('/api/connected/request-code', methods=['POST'])
-    def connected_request_code():
-        """Request verification code via WhatsApp."""
+    @app.route('/api/connected/validate-key', methods=['POST'])
+    def connected_validate_key():
+        """Validate and clean a key from various input sources."""
         data = request.get_json()
+
         try:
-            from Whatsapp_Chat_Exporter.wa_connected import WhatsAppAuthenticator
-            auth = WhatsAppAuthenticator()
-            auth.set_phone_number(data['phone'])
-            result = auth.request_code(data.get('method', 'sms'))
-            # Store auth in session for verify step
-            app.config['_wa_auth'] = auth
-            return jsonify({"status": "sent", "message": "Code requested"})
-        except ImportError:
-            return jsonify({"error": "Connected mode requires 'requests': pip install requests"})
+            key = None
+
+            if data.get('key_hex'):
+                from Whatsapp_Chat_Exporter.key_extractor import clean_key_input
+                key = clean_key_input(data['key_hex'])
+                if not key:
+                    return jsonify({"error": "Invalid key. Expected 64 hex characters (0-9, a-f). "
+                                  "You can include spaces, dashes, or colons as separators."})
+
+            elif data.get('key_file'):
+                from Whatsapp_Chat_Exporter.wa_connected import read_key_file
+                key = read_key_file(data['key_file'])
+                if not key:
+                    return jsonify({"error": f"Could not read key from file: {data['key_file']}"})
+
+            elif data.get('key_image'):
+                from Whatsapp_Chat_Exporter.key_extractor import extract_key_from_image
+                key = extract_key_from_image(data['key_image'])
+                if not key:
+                    return jsonify({"error": "Could not extract key from image. "
+                                  "Make sure pytesseract is installed: pip install pytesseract Pillow"})
+
+            if key:
+                return jsonify({"key": key})
+            return jsonify({"error": "No key input provided"})
+
         except Exception as e:
             return jsonify({"error": str(e)})
 
-    @app.route('/api/connected/verify', methods=['POST'])
-    def connected_verify():
-        """Verify code and retrieve key."""
-        data = request.get_json()
+    @app.route('/api/connected/adb-extract', methods=['POST'])
+    def connected_adb_extract():
+        """Extract key from connected Android device via ADB."""
         try:
-            auth = app.config.get('_wa_auth')
-            if not auth:
-                from Whatsapp_Chat_Exporter.wa_connected import WhatsAppAuthenticator
-                auth = WhatsAppAuthenticator()
-                auth.set_phone_number(data['phone'])
-
-            result = auth.verify_code(data['code'])
-            key = auth.extract_backup_key(result)
-            return jsonify({"key": key, "raw_result": {k: str(v) for k, v in result.items()}})
+            from Whatsapp_Chat_Exporter.wa_connected import extract_key_from_device_adb
+            key = extract_key_from_device_adb()
+            if key:
+                return jsonify({"key": key})
+            return jsonify({"error": "Could not extract key via ADB. "
+                          "Make sure: (1) ADB is installed, (2) device is connected, "
+                          "(3) device is rooted, (4) WhatsApp is installed."})
         except Exception as e:
             return jsonify({"error": str(e)})
 
