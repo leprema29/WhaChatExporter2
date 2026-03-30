@@ -178,18 +178,21 @@ class WhatsAppAuthenticator:
         if not self.phone_number:
             raise ConnectedModeError("Phone number not set. Call set_phone_number() first.")
 
+        device_id = self._generate_device_id()
         params = {
             "cc": self.cc,
             "in": self.phone,
             "lg": "en",
             "lc": "US",
-            "mcc": "000",
-            "mnc": "000",
+            "mcc": "624",
+            "mnc": "002",
+            "sim_mcc": "624",
+            "sim_mnc": "002",
             "method": method,
-            "sim_mcc": "000",
-            "sim_mnc": "000",
             "token": self._build_token(self.phone_number),
-            "id": self._generate_device_id(),
+            "id": device_id,
+            "platform": "android",
+            "rc": "0",
             "mistyped": "6",
             "network_radio_type": "1",
             "simnum": "1",
@@ -198,16 +201,23 @@ class WhatsAppAuthenticator:
             "hasinrc": "1",
             "rcmatch": "1",
             "pid": str(os.getpid()),
-            "rchash": hashlib.sha256(self.phone_number.encode()).hexdigest()[:20],
+            "rchash": hashlib.sha256(device_id.encode()).hexdigest()[:20],
             "anhash": hashlib.md5(self.phone_number.encode()).hexdigest(),
             "extexist": "1",
             "extstate": "1",
+            "fdid": device_id,
+            "e_regid": base64.b64encode(secrets.token_bytes(16)).decode(),
+            "e_keytype": "BQ",
+            "e_ident": base64.b64encode(secrets.token_bytes(32)).decode(),
+            "e_skey_id": base64.b64encode(secrets.token_bytes(3)).decode(),
+            "e_skey_val": base64.b64encode(secrets.token_bytes(32)).decode(),
+            "e_skey_sig": base64.b64encode(secrets.token_bytes(64)).decode(),
         }
 
         logging.info(f"Requesting verification code via {method} to +{self.cc}{self.phone}...")
 
         try:
-            resp = self.session.get(ENDPOINT_CODE, params=params, timeout=30)
+            resp = self.session.post(ENDPOINT_CODE, data=params, timeout=30)
             result = resp.json()
         except requests.RequestException as e:
             raise ConnectedModeError(f"Network error requesting code: {e}")
@@ -249,12 +259,13 @@ class WhatsAppAuthenticator:
             "cc": self.cc,
             "in": self.phone,
             "code": code,
+            "platform": "android",
         }
 
         logging.info("Verifying code...")
 
         try:
-            resp = self.session.get(ENDPOINT_REGISTER, params=params, timeout=30)
+            resp = self.session.post(ENDPOINT_REGISTER, data=params, timeout=30)
             result = resp.json()
         except requests.RequestException as e:
             raise ConnectedModeError(f"Network error verifying code: {e}")
