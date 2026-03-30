@@ -21,6 +21,8 @@ from Whatsapp_Chat_Exporter.config import find_config_file, load_config, apply_c
 from Whatsapp_Chat_Exporter.export_plugins import get_plugin, list_plugins
 from Whatsapp_Chat_Exporter.anonymizer import Anonymizer
 from Whatsapp_Chat_Exporter.key_extractor import extract_key_from_image, clean_key_input
+from Whatsapp_Chat_Exporter.wa_connected import interactive_connected_mode
+from Whatsapp_Chat_Exporter.db_comparator import compare_databases_interactive
 from argparse import ArgumentParser, SUPPRESS
 from datetime import datetime
 from getpass import getpass
@@ -322,6 +324,24 @@ def setup_argument_parser() -> ArgumentParser:
         help="Generate an HTML overview page with all chats"
     )
 
+    # Connected mode
+    connected_group = parser.add_argument_group('Connected Mode')
+    connected_group.add_argument(
+        "--connected", dest="connected_mode", default=False, action='store_true',
+        help="Retrieve encryption key via WhatsApp verification (SMS/call). Requires 'requests' package."
+    )
+
+    # Multi-DB comparison
+    compare_group = parser.add_argument_group('Database Comparison')
+    compare_group.add_argument(
+        "--compare", dest="compare_dbs", nargs='+', metavar="DB",
+        help="Compare multiple msgstore.db files to find deleted messages"
+    )
+    compare_group.add_argument(
+        "--compare-output", dest="compare_output", default="comparison_result",
+        help="Output directory for comparison results (default: comparison_result)"
+    )
+
     # Miscellaneous
     misc_group = parser.add_argument_group('Miscellaneous')
     misc_group.add_argument(
@@ -366,6 +386,13 @@ def setup_argument_parser() -> ArgumentParser:
 
 def validate_args(parser: ArgumentParser, args) -> None:
     """Validate command line arguments and modify them if needed."""
+    # Skip validation for standalone modes
+    if hasattr(args, 'compare_dbs') and args.compare_dbs:
+        return
+    if hasattr(args, 'connected_mode') and args.connected_mode and not args.android and not args.ios:
+        # Connected mode implies Android
+        args.android = True
+
     # Basic validation checks
     if args.android and args.ios and args.exported and args.import_json:
         parser.error("You must define only one device type.")
@@ -972,6 +999,22 @@ def main():
     if args.list_formats:
         logging.info("Available export formats: " + ", ".join(list_plugins()))
         exit(0)
+
+    # Handle multi-DB comparison (standalone mode)
+    if hasattr(args, 'compare_dbs') and args.compare_dbs:
+        logging.info(f"Comparing {len(args.compare_dbs)} databases...")
+        compare_databases_interactive(args.compare_dbs, args.compare_output)
+        exit(0)
+
+    # Handle connected mode - retrieve key via WhatsApp verification
+    if hasattr(args, 'connected_mode') and args.connected_mode:
+        key = interactive_connected_mode()
+        if key:
+            args.key = key
+            logging.info("Key retrieved. Proceeding with decryption...")
+        else:
+            logging.error("Could not retrieve encryption key.")
+            exit(1)
 
     # Load configuration file
     config_path = find_config_file(args.config_file)

@@ -95,6 +95,12 @@ GUI_TEMPLATE = r'''
             <button onclick="showTab('config')" id="tab-config" class="tab-active pb-3 px-1 text-sm transition-all">
                 Configuration
             </button>
+            <button onclick="showTab('connected')" id="tab-connected" class="tab-inactive pb-3 px-1 text-sm transition-all">
+                Connected Mode
+            </button>
+            <button onclick="showTab('compare')" id="tab-compare" class="tab-inactive pb-3 px-1 text-sm transition-all">
+                Compare DBs
+            </button>
             <button onclick="showTab('output')" id="tab-output" class="tab-inactive pb-3 px-1 text-sm transition-all">
                 Output & Logs
             </button>
@@ -346,6 +352,96 @@ GUI_TEMPLATE = r'''
             </form>
         </div>
 
+        <!-- Connected Mode Tab -->
+        <div id="panel-connected" class="hidden fade-in">
+            <div class="space-y-6">
+                <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-2">Connected Mode - Key Retrieval</h2>
+                    <p class="text-sm text-gray-500 mb-6">Retrieve your WhatsApp backup encryption key via phone verification. You must own the phone number.</p>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number (with country code)</label>
+                            <input type="text" id="connPhone" placeholder="+33612345678"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Verification Method</label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="conn_method" value="sms" checked class="text-whatsapp"> SMS
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="conn_method" value="voice" class="text-whatsapp"> Voice Call
+                                </label>
+                            </div>
+                        </div>
+                        <button type="button" onclick="requestCode()" id="requestCodeBtn"
+                                class="px-6 py-2.5 bg-whatsapp text-white rounded-lg text-sm font-semibold hover:bg-whatsapp-dark transition-colors">
+                            Request Code
+                        </button>
+
+                        <div id="codeSection" class="hidden border-t pt-4 mt-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Verification Code (6 digits)</label>
+                                <input type="text" id="connCode" placeholder="123456" maxlength="6"
+                                       class="w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm tracking-widest text-center text-lg focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            </div>
+                            <button type="button" onclick="verifyCode()" id="verifyCodeBtn"
+                                    class="mt-3 px-6 py-2.5 bg-whatsapp text-white rounded-lg text-sm font-semibold hover:bg-whatsapp-dark transition-colors">
+                                Verify & Get Key
+                            </button>
+                        </div>
+
+                        <div id="connResult" class="hidden mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <p class="text-sm font-medium text-green-800">Encryption Key Retrieved:</p>
+                            <code id="connKey" class="block mt-2 p-2 bg-white rounded border text-xs font-mono break-all"></code>
+                            <button type="button" onclick="useRetrievedKey()" class="mt-3 px-4 py-2 bg-whatsapp text-white rounded-lg text-sm hover:bg-whatsapp-dark">
+                                Use This Key for Export
+                            </button>
+                        </div>
+
+                        <div id="connError" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <p class="text-sm text-red-700" id="connErrorMsg"></p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Compare DBs Tab -->
+        <div id="panel-compare" class="hidden fade-in">
+            <div class="space-y-6">
+                <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-2">Compare Databases - Find Deleted Messages</h2>
+                    <p class="text-sm text-gray-500 mb-6">Provide multiple msgstore.db files (already decrypted) from different dates. The tool will compare them to find messages that were deleted.</p>
+
+                    <div class="space-y-4">
+                        <div id="dbInputs">
+                            <div class="flex gap-2 mb-2 db-input-row">
+                                <input type="text" placeholder="Path to first msgstore.db (oldest)" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <span class="text-xs text-gray-400 self-center w-16">Oldest</span>
+                            </div>
+                            <div class="flex gap-2 mb-2 db-input-row">
+                                <input type="text" placeholder="Path to second msgstore.db (newest)" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <span class="text-xs text-gray-400 self-center w-16">Newest</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addDbInput()" class="text-sm text-whatsapp hover:underline">+ Add another database</button>
+
+                        <div class="flex gap-3 mt-4">
+                            <button type="button" onclick="runComparison()" id="compareBtn"
+                                    class="px-6 py-2.5 bg-whatsapp text-white rounded-lg text-sm font-semibold hover:bg-whatsapp-dark transition-colors">
+                                Compare & Find Deleted Messages
+                            </button>
+                        </div>
+
+                        <div id="compareResult" class="hidden mt-4"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
         <!-- Output Tab -->
         <div id="panel-output" class="hidden fade-in">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -543,6 +639,117 @@ GUI_TEMPLATE = r'''
         line.textContent = message;
         log.appendChild(line);
         log.scrollTop = log.scrollHeight;
+    }
+
+    // Connected mode handlers
+    async function requestCode() {
+        const phone = document.getElementById('connPhone').value.trim();
+        const method = document.querySelector('input[name="conn_method"]:checked').value;
+        if (!phone) { alert('Enter your phone number'); return; }
+        const btn = document.getElementById('requestCodeBtn');
+        btn.disabled = true; btn.textContent = 'Sending...';
+        document.getElementById('connError').classList.add('hidden');
+        try {
+            const resp = await fetch('/api/connected/request-code', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({phone, method})
+            });
+            const result = await resp.json();
+            if (result.error) {
+                document.getElementById('connErrorMsg').textContent = result.error;
+                document.getElementById('connError').classList.remove('hidden');
+            } else {
+                document.getElementById('codeSection').classList.remove('hidden');
+            }
+        } catch(e) {
+            document.getElementById('connErrorMsg').textContent = e.message;
+            document.getElementById('connError').classList.remove('hidden');
+        } finally { btn.disabled = false; btn.textContent = 'Request Code'; }
+    }
+
+    async function verifyCode() {
+        const phone = document.getElementById('connPhone').value.trim();
+        const code = document.getElementById('connCode').value.trim();
+        if (!code || code.length !== 6) { alert('Enter the 6-digit code'); return; }
+        const btn = document.getElementById('verifyCodeBtn');
+        btn.disabled = true; btn.textContent = 'Verifying...';
+        document.getElementById('connError').classList.add('hidden');
+        try {
+            const resp = await fetch('/api/connected/verify', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({phone, code})
+            });
+            const result = await resp.json();
+            if (result.error) {
+                document.getElementById('connErrorMsg').textContent = result.error;
+                document.getElementById('connError').classList.remove('hidden');
+            } else if (result.key) {
+                document.getElementById('connKey').textContent = result.key;
+                document.getElementById('connResult').classList.remove('hidden');
+            } else {
+                document.getElementById('connErrorMsg').textContent = 'Key not found in response. Use WhatsApp Settings > Chats > Chat Backup to find it.';
+                document.getElementById('connError').classList.remove('hidden');
+            }
+        } catch(e) {
+            document.getElementById('connErrorMsg').textContent = e.message;
+            document.getElementById('connError').classList.remove('hidden');
+        } finally { btn.disabled = false; btn.textContent = 'Verify & Get Key'; }
+    }
+
+    function useRetrievedKey() {
+        const key = document.getElementById('connKey').textContent;
+        document.querySelector('input[name="key"]').value = key;
+        showTab('config');
+    }
+
+    // Compare DBs handlers
+    function addDbInput() {
+        const container = document.getElementById('dbInputs');
+        const count = container.querySelectorAll('.db-input-row').length + 1;
+        const div = document.createElement('div');
+        div.className = 'flex gap-2 mb-2 db-input-row';
+        div.innerHTML = `<input type="text" placeholder="Path to msgstore.db #${count}" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+            <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600 text-sm px-2">Remove</button>`;
+        container.appendChild(div);
+    }
+
+    async function runComparison() {
+        const inputs = document.querySelectorAll('.compare-db');
+        const dbs = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+        if (dbs.length < 2) { alert('You need at least 2 database files to compare'); return; }
+        const btn = document.getElementById('compareBtn');
+        btn.disabled = true; btn.textContent = 'Comparing...';
+        try {
+            const resp = await fetch('/api/compare', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({databases: dbs})
+            });
+            const result = await resp.json();
+            const div = document.getElementById('compareResult');
+            div.classList.remove('hidden');
+            if (result.error) {
+                div.innerHTML = `<div class="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">${result.error}</div>`;
+            } else {
+                let html = `<div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p class="font-semibold text-green-800">Comparison Complete</p>
+                    <p class="text-sm text-green-700 mt-1">Total messages: ${result.total_unique} | Deleted: ${result.total_deleted}</p>`;
+                if (result.chats_with_deletions && Object.keys(result.chats_with_deletions).length > 0) {
+                    html += `<div class="mt-3"><p class="text-sm font-medium text-green-800">Chats with deletions:</p><ul class="mt-1 text-sm text-green-700">`;
+                    for (const [chat, count] of Object.entries(result.chats_with_deletions)) {
+                        html += `<li>- ${chat}: ${count} deleted</li>`;
+                    }
+                    html += `</ul></div>`;
+                }
+                if (result.output_dir) {
+                    html += `<p class="text-sm text-green-600 mt-2">Reports saved to: ${result.output_dir}</p>`;
+                }
+                html += `</div>`;
+                div.innerHTML = html;
+            }
+        } catch(e) {
+            document.getElementById('compareResult').innerHTML = `<div class="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">${e.message}</div>`;
+            document.getElementById('compareResult').classList.remove('hidden');
+        } finally { btn.disabled = false; btn.textContent = 'Compare & Find Deleted Messages'; }
     }
 
     document.getElementById('exportForm').addEventListener('submit', async function(e) {
@@ -828,6 +1035,67 @@ def create_app() -> 'Flask':
             return jsonify({"error": str(e)})
 
         return jsonify({"chats": chats})
+
+    @app.route('/api/connected/request-code', methods=['POST'])
+    def connected_request_code():
+        """Request verification code via WhatsApp."""
+        data = request.get_json()
+        try:
+            from Whatsapp_Chat_Exporter.wa_connected import WhatsAppAuthenticator
+            auth = WhatsAppAuthenticator()
+            auth.set_phone_number(data['phone'])
+            result = auth.request_code(data.get('method', 'sms'))
+            # Store auth in session for verify step
+            app.config['_wa_auth'] = auth
+            return jsonify({"status": "sent", "message": "Code requested"})
+        except ImportError:
+            return jsonify({"error": "Connected mode requires 'requests': pip install requests"})
+        except Exception as e:
+            return jsonify({"error": str(e)})
+
+    @app.route('/api/connected/verify', methods=['POST'])
+    def connected_verify():
+        """Verify code and retrieve key."""
+        data = request.get_json()
+        try:
+            auth = app.config.get('_wa_auth')
+            if not auth:
+                from Whatsapp_Chat_Exporter.wa_connected import WhatsAppAuthenticator
+                auth = WhatsAppAuthenticator()
+                auth.set_phone_number(data['phone'])
+
+            result = auth.verify_code(data['code'])
+            key = auth.extract_backup_key(result)
+            return jsonify({"key": key, "raw_result": {k: str(v) for k, v in result.items()}})
+        except Exception as e:
+            return jsonify({"error": str(e)})
+
+    @app.route('/api/compare', methods=['POST'])
+    def compare_dbs():
+        """Compare multiple databases for deleted messages."""
+        data = request.get_json()
+        db_paths = data.get('databases', [])
+
+        if len(db_paths) < 2:
+            return jsonify({"error": "At least 2 databases are required"})
+
+        for path in db_paths:
+            if not os.path.isfile(path):
+                return jsonify({"error": f"File not found: {path}"})
+
+        try:
+            from Whatsapp_Chat_Exporter.db_comparator import compare_databases_interactive
+            output_dir = "comparison_result"
+            report = compare_databases_interactive(db_paths, output_dir)
+            return jsonify({
+                "total_unique": report.total_unique_messages,
+                "total_deleted": report.total_deleted_messages,
+                "total_chats": report.total_chats,
+                "chats_with_deletions": report.chats_with_deletions,
+                "output_dir": output_dir,
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)})
 
     return app
 
