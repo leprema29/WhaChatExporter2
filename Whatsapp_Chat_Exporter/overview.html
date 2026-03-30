@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>WhatsApp Chat Export Overview</title>
+        <meta charset="UTF-8">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            whatsapp: {
+                                light: '#e7ffdb',
+                                DEFAULT: '#25D366',
+                                dark: '#075E54',
+                                chat: '#efeae2',
+                                'chat-light': '#f0f2f5',
+                            }
+                        }
+                    }
+                }
+            }
+        </script>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+            .chat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+            .chat-card { transition: all 0.2s ease; }
+            .search-box { transition: border-color 0.2s ease; }
+            .search-box:focus { border-color: #25D366; outline: none; }
+        </style>
+    </head>
+    <body class="bg-whatsapp-chat-light min-h-screen">
+        <header class="bg-whatsapp-dark text-white p-6 shadow-lg">
+            <div class="max-w-6xl mx-auto">
+                <h1 class="text-3xl font-bold mb-2">WhatsApp Chat Export</h1>
+                <p class="text-[#8696a0]">{{ total_chats }} conversations exported | {{ total_messages }} total messages</p>
+                <div class="mt-4 flex flex-wrap gap-4">
+                    <input type="text" id="searchInput" placeholder="Search chats..."
+                           class="search-box px-4 py-2 rounded-lg bg-[#1f2c34] text-white border border-[#3b4a54] w-64"
+                           onkeyup="filterChats()">
+                    <select id="sortSelect" class="px-4 py-2 rounded-lg bg-[#1f2c34] text-white border border-[#3b4a54]"
+                            onchange="sortChats()">
+                        <option value="recent">Most Recent</option>
+                        <option value="name">Name (A-Z)</option>
+                        <option value="messages">Most Messages</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                    <select id="typeFilter" class="px-4 py-2 rounded-lg bg-[#1f2c34] text-white border border-[#3b4a54]"
+                            onchange="filterChats()">
+                        <option value="all">All Chats</option>
+                        <option value="personal">Personal</option>
+                        <option value="group">Groups</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto p-6">
+            <!-- Statistics -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-lg p-4 shadow-sm text-center">
+                    <div class="text-2xl font-bold text-whatsapp-dark">{{ total_chats }}</div>
+                    <div class="text-sm text-gray-500">Conversations</div>
+                </div>
+                <div class="bg-white rounded-lg p-4 shadow-sm text-center">
+                    <div class="text-2xl font-bold text-whatsapp-dark">{{ total_messages }}</div>
+                    <div class="text-sm text-gray-500">Messages</div>
+                </div>
+                <div class="bg-white rounded-lg p-4 shadow-sm text-center">
+                    <div class="text-2xl font-bold text-whatsapp-dark">{{ total_media }}</div>
+                    <div class="text-sm text-gray-500">Media Files</div>
+                </div>
+                <div class="bg-white rounded-lg p-4 shadow-sm text-center">
+                    <div class="text-2xl font-bold text-whatsapp-dark">{{ date_range }}</div>
+                    <div class="text-sm text-gray-500">Date Range</div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            {% if timeline %}
+            <div class="bg-white rounded-lg p-4 shadow-sm mb-8">
+                <h2 class="text-lg font-semibold text-whatsapp-dark mb-3">Activity Timeline</h2>
+                <div class="flex items-end gap-1 h-20">
+                    {% for month, count in timeline %}
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-full bg-whatsapp rounded-t"
+                             style="height: {{ (count / max_timeline * 100)|int }}%"
+                             title="{{ month }}: {{ count }} messages"></div>
+                        <div class="text-[8px] text-gray-400 mt-1 truncate w-full text-center">{{ month }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Chat List -->
+            <div id="chatList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for chat_info in chats %}
+                <a href="{{ chat_info.file }}" class="chat-card block bg-white rounded-lg p-4 shadow-sm border border-gray-100"
+                   data-name="{{ chat_info.name|lower }}"
+                   data-messages="{{ chat_info.message_count }}"
+                   data-timestamp="{{ chat_info.last_timestamp }}"
+                   data-type="{{ chat_info.type }}">
+                    <div class="flex items-center gap-3">
+                        {% if chat_info.avatar %}
+                        <img src="{{ chat_info.avatar }}" class="w-12 h-12 rounded-full object-cover"
+                             onerror="this.style.display='none'">
+                        {% else %}
+                        <div class="w-12 h-12 rounded-full bg-whatsapp flex items-center justify-center text-white font-bold text-lg">
+                            {{ chat_info.name[0]|upper if chat_info.name else '?' }}
+                        </div>
+                        {% endif %}
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold text-[#111b21] truncate">{{ chat_info.name }}</h3>
+                            <p class="text-sm text-gray-500">{{ chat_info.message_count }} messages</p>
+                        </div>
+                        <div class="text-xs text-gray-400">
+                            {{ chat_info.last_date }}
+                        </div>
+                    </div>
+                    {% if chat_info.last_message %}
+                    <p class="text-sm text-gray-500 mt-2 truncate">{{ chat_info.last_message }}</p>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+
+            {% if not chats %}
+            <div class="text-center text-gray-500 py-12">
+                <p class="text-xl">No chats to display</p>
+            </div>
+            {% endif %}
+        </main>
+
+        <footer class="text-center text-gray-400 text-sm py-8">
+            Generated by WhatsApp Chat Exporter Enhanced
+        </footer>
+
+        <script>
+        function filterChats() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const typeFilter = document.getElementById('typeFilter').value;
+            const cards = document.querySelectorAll('.chat-card');
+
+            cards.forEach(card => {
+                const name = card.dataset.name;
+                const type = card.dataset.type;
+                const matchesSearch = name.includes(search);
+                const matchesType = typeFilter === 'all' || type === typeFilter;
+                card.style.display = (matchesSearch && matchesType) ? '' : 'none';
+            });
+        }
+
+        function sortChats() {
+            const sort = document.getElementById('sortSelect').value;
+            const list = document.getElementById('chatList');
+            const cards = Array.from(list.children);
+
+            cards.sort((a, b) => {
+                if (sort === 'recent') return (b.dataset.timestamp || 0) - (a.dataset.timestamp || 0);
+                if (sort === 'oldest') return (a.dataset.timestamp || 0) - (b.dataset.timestamp || 0);
+                if (sort === 'name') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+                if (sort === 'messages') return (b.dataset.messages || 0) - (a.dataset.messages || 0);
+                return 0;
+            });
+
+            cards.forEach(card => list.appendChild(card));
+        }
+        </script>
+    </body>
+</html>
