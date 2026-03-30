@@ -49,11 +49,14 @@ all = ["pycryptodome", "javaobj-py3"]
 everything = ["pycryptodome", "javaobj-py3"]
 backup = ["pycryptodome", "javaobj-py3"]
 whisper = ["openai-whisper"]
+pdf = ["fpdf2"]
+gui = ["flask"]
 
 [project.scripts]
 wtsexporter = "Whatsapp_Chat_Exporter.__main__:main"
 waexporter = "Whatsapp_Chat_Exporter.__main__:main"
 whatsapp-chat-exporter = "Whatsapp_Chat_Exporter.__main__:main"
+wtsexporter-gui = "Whatsapp_Chat_Exporter.gui:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

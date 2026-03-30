@@ -278,6 +278,10 @@ def setup_argument_parser() -> ArgumentParser:
         help="Export chats in CSV format (default if present: result/)"
     )
     plugin_group.add_argument(
+        "--pdf", dest="pdf_export", nargs='?', default=None, type=str, const="result",
+        help="Export chats in PDF format (requires fpdf2: pip install fpdf2)"
+    )
+    plugin_group.add_argument(
         "--list-formats", dest="list_formats", default=False, action='store_true',
         help="List available export formats"
     )
@@ -1075,6 +1079,11 @@ def main():
                 plugin = get_plugin("csv")
                 if plugin:
                     plugin.export_all(data, args.csv_export)
+
+            if hasattr(args, 'pdf_export') and args.pdf_export:
+                plugin = get_plugin("pdf")
+                if plugin:
+                    plugin.export_all(data, args.pdf_export)
 
             # Generate overview page
             if hasattr(args, 'generate_overview') and args.generate_overview:
