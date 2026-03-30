@@ -107,7 +107,8 @@ chat_data_merged = {
                 "sticker": False,
                 "message_type": None,
                 "received_timestamp": None,
-                "read_timestamp": None
+                "read_timestamp": None,
+                "is_deleted": False
             },
             "24691": {
                 "from_me": False,
@@ -128,7 +129,8 @@ chat_data_merged = {
                 "sticker": False,
                 "message_type": None,
                 "received_timestamp": None,
-                "read_timestamp": None
+                "read_timestamp": None,
+                "is_deleted": False
             },
             "24692": {
                 "from_me": False,
@@ -149,7 +151,8 @@ chat_data_merged = {
                 "sticker": False,
                 "message_type": None,
                 "received_timestamp": None,
-                "read_timestamp": None
+                "read_timestamp": None,
+                "is_deleted": False
             },
         }
     }

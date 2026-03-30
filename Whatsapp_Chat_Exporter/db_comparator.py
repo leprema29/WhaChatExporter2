@@ -281,6 +281,144 @@ class DatabaseComparator:
 
         return report
 
+    def batch_decrypt(self, encrypted_paths: List[str], key: str, output_dir: str = ".") -> List[str]:
+        """
+        Decrypt multiple encrypted backup files using the same key.
+
+        Args:
+            encrypted_paths: List of paths to .crypt12/.crypt14/.crypt15 files
+            key: Hex key string (64 chars) or path to key file
+            output_dir: Directory for decrypted files
+
+        Returns:
+            List of paths to decrypted database files
+        """
+        import string as string_module
+        from Whatsapp_Chat_Exporter.utility import Crypt, DbType
+        from Whatsapp_Chat_Exporter import android_crypt
+
+        os.makedirs(output_dir, exist_ok=True)
+        decrypted_paths = []
+
+        # Determine if key is hex string or file
+        key_is_hex = not os.path.isfile(key) and all(
+            c in string_module.hexdigits for c in key.replace(" ", "")
+        )
+
+        if key_is_hex:
+            key_bytes = bytes.fromhex(key.replace(" ", ""))
+            keyfile_stream = False
+        else:
+            key_bytes = open(key, "rb").read()
+            keyfile_stream = True
+
+        for i, enc_path in enumerate(encrypted_paths):
+            if not os.path.isfile(enc_path):
+                logging.warning(f"File not found, skipping: {enc_path}")
+                continue
+
+            # Determine crypt type
+            if "crypt12" in enc_path:
+                crypt = Crypt.CRYPT12
+            elif "crypt14" in enc_path:
+                crypt = Crypt.CRYPT14
+            elif "crypt15" in enc_path:
+                crypt = Crypt.CRYPT15
+            else:
+                logging.warning(f"Unknown format, skipping: {enc_path}")
+                continue
+
+            # Output path
+            base_name = os.path.basename(enc_path)
+            out_name = f"decrypted_{i}_{base_name.split('.')[0]}.db"
+            out_path = os.path.join(output_dir, out_name)
+
+            logging.info(f"Decrypting {base_name}...", extra={"clear": True})
+
+            try:
+                db_data = open(enc_path, "rb").read()
+
+                # For crypt15 with hex key, need to handle key properly
+                if key_is_hex:
+                    key_to_use = key_bytes
+                else:
+                    key_to_use = key_bytes
+
+                android_crypt.decrypt_backup(
+                    db_data,
+                    key_to_use,
+                    out_path,
+                    crypt,
+                    False,
+                    DbType.MESSAGE,
+                    keyfile_stream=keyfile_stream,
+                )
+                decrypted_paths.append(out_path)
+                logging.info(f"Decrypted: {base_name} -> {out_name}")
+            except Exception as e:
+                logging.error(f"Failed to decrypt {base_name}: {e}")
+
+        return decrypted_paths
+
+    def merge_to_collection(self) -> 'ChatCollection':
+        """
+        After compare(), merge all messages into a ChatCollection
+        with is_deleted flags set on recovered messages.
+
+        Returns:
+            ChatCollection with all messages, deleted ones marked
+        """
+        from Whatsapp_Chat_Exporter.data_model import ChatCollection, ChatStore, Message, Timing
+
+        if not self._messages:
+            raise ValueError("Run compare() first")
+
+        data = ChatCollection()
+        timing = Timing(0)
+
+        for chat_jid, chat_msgs in self._messages.items():
+            # Get chat name from any available source
+            chat_name = None
+            for msg in chat_msgs.values():
+                if msg.sender and not msg.from_me:
+                    chat_name = msg.sender
+                    break
+            if not chat_name and "@" in chat_jid:
+                chat_name = chat_jid.split("@")[0]
+
+            chat = ChatStore("android", chat_name)
+
+            # Sort messages by timestamp and add them
+            sorted_msgs = sorted(chat_msgs.values(), key=lambda m: m.timestamp)
+
+            for i, comp_msg in enumerate(sorted_msgs):
+                ts = comp_msg.timestamp
+                msg = Message(
+                    from_me=comp_msg.from_me,
+                    timestamp=ts,
+                    time=ts,
+                    key_id=comp_msg.key_id,
+                    timezone_offset=timing,
+                )
+                msg.data = comp_msg.text
+                msg.sender = comp_msg.sender
+                msg.is_deleted = comp_msg.is_deleted
+
+                if msg.data is None:
+                    msg.data = "[media/attachment]"
+                    msg.meta = True
+
+                chat.add_message(str(i), msg)
+
+            if len(chat) > 0:
+                data.add_chat(chat_jid, chat)
+
+        total = sum(len(c) for c in data.values())
+        deleted = sum(1 for c in data.values() for m in c.values() if getattr(m, 'is_deleted', False))
+        logging.info(f"Merged collection: {total} messages ({deleted} recovered/deleted)")
+
+        return data
+
     def print_report(self, report: ComparisonReport) -> None:
         """Print a human-readable comparison report."""
         print("\n" + "=" * 60)
@@ -379,20 +517,42 @@ class DatabaseComparator:
         logging.info(f"Deleted messages exported to: {output_path}")
 
 
-def compare_databases_interactive(db_paths: List[str], output_dir: str = "comparison_result") -> ComparisonReport:
+def compare_databases_interactive(
+    db_paths: List[str],
+    output_dir: str = "comparison_result",
+    key: Optional[str] = None,
+) -> ComparisonReport:
     """
     Compare multiple databases interactively.
+    Supports both decrypted .db files and encrypted .crypt* files (with key).
 
     Args:
-        db_paths: List of paths to msgstore.db files
+        db_paths: List of paths to msgstore.db or .crypt* files
         output_dir: Directory for output files
+        key: Optional encryption key (hex string or key file path) for encrypted backups
 
     Returns:
         ComparisonReport
     """
     comparator = DatabaseComparator()
 
-    for path in db_paths:
+    # Check if any files are encrypted
+    encrypted = [p for p in db_paths if any(x in p for x in ["crypt12", "crypt14", "crypt15"])]
+    decrypted = [p for p in db_paths if p not in encrypted]
+
+    if encrypted:
+        if not key:
+            logging.error(
+                "Encrypted backup files detected but no key provided. "
+                "Use -k to specify the encryption key."
+            )
+            raise ValueError("Key required for encrypted backups")
+
+        decrypt_dir = os.path.join(output_dir, "_decrypted")
+        decrypted_from_enc = comparator.batch_decrypt(encrypted, key, decrypt_dir)
+        decrypted.extend(decrypted_from_enc)
+
+    for path in decrypted:
         comparator.add_database(path)
 
     report = comparator.compare()

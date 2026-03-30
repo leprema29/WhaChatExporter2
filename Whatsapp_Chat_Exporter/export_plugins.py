@@ -71,7 +71,8 @@ class MarkdownExportPlugin(ExportPlugin):
                     f.write(f"*{data}*\n\n")
                     continue
 
-                f.write(f"{sender} ({msg.time}):\n")
+                deleted_tag = " **[DELETED]**" if hasattr(msg, 'is_deleted') and msg.is_deleted else ""
+                f.write(f"{sender} ({msg.time}):{deleted_tag}\n")
 
                 if msg.media and msg.data and msg.data != "The media is missing":
                     f.write(f"![media]({msg.data})\n")
@@ -101,7 +102,7 @@ class CSVExportPlugin(ExportPlugin):
             writer.writerow([
                 "timestamp", "date", "time", "sender", "from_me",
                 "message", "media", "media_type", "caption",
-                "is_meta", "reactions"
+                "is_meta", "reactions", "is_deleted"
             ])
 
             name = chat.name or chat_id.split('@')[0]
@@ -122,7 +123,8 @@ class CSVExportPlugin(ExportPlugin):
                     msg.mime or "",
                     msg.caption or "",
                     msg.meta,
-                    reactions_str
+                    reactions_str,
+                    getattr(msg, 'is_deleted', False)
                 ])
 
 
@@ -197,6 +199,14 @@ class PDFExportPlugin(ExportPlugin):
             header = f"{self._safe_text(sender)}  [{msg.time}]"
             pdf.cell(0, 5, header, new_x="LMARGIN", new_y="NEXT")
             pdf.set_text_color(0, 0, 0)
+
+            # Deleted message indicator
+            if hasattr(msg, 'is_deleted') and msg.is_deleted:
+                pdf.set_font("Helvetica", "B", 7)
+                pdf.set_text_color(220, 50, 50)
+                pdf.cell(0, 4, "[DELETED MESSAGE - recovered from older backup]", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_text_color(0, 0, 0)
+                pdf.set_font("Helvetica", "", 9)
 
             # Message body
             pdf.set_font("Helvetica", "", 9)

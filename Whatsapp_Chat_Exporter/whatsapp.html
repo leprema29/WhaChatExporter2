@@ -113,6 +113,7 @@
                 background-color: transparent;
             }
         }
+        .msg-deleted { background-color: #fff5f5 !important; border-left: 3px solid #ef4444; }
         .search-input {
             transform: translateY(-100%);
             transition: transform 0.3s ease-in-out;
@@ -320,7 +321,7 @@
                         {% endif %}
                         <!--Actual messages-->
                         {% if msg.from_me == true %}
-                        <div class="flex justify-end items-center group" id="{{ msg.key_id }}">
+                        <div class="flex justify-end items-center group {% if msg.is_deleted is defined and msg.is_deleted %}msg-deleted{% endif %}" id="{{ msg.key_id }}">
                             <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 relative mr-2">
                                 <div class="relative">
                                     <div class="relative group/tooltip">
@@ -424,6 +425,9 @@
                                     {% endif %}
                                 </p>
                                 <p class="text-[10px] text-[#667781] text-right mt-1">{{ msg.time }}
+                                    {% if msg.is_deleted is defined and msg.is_deleted %}
+                                    <span class="ml-1 px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[9px] font-medium">DELETED</span>
+                                    {% endif %}
                                     <span class="status-indicator{% if msg.read_timestamp %} read{% endif %}">
                                         {% if msg.received_timestamp %}
                                         ✓✓
@@ -444,7 +448,7 @@
                             </div>
                         </div>
                         {% else %}
-                        <div class="flex justify-start items-center group" id="{{ msg.key_id }}">
+                        <div class="flex justify-start items-center group {% if msg.is_deleted is defined and msg.is_deleted %}msg-deleted{% endif %}" id="{{ msg.key_id }}">
                             <div class="bg-white rounded-lg p-2 max-w-[80%] shadow-sm relative {% if msg.reactions %}mb-2{% endif %}">
                                 {% if msg.reply is not none %}
                                 <a href="#{{msg.reply}}" target="_self" class="no-base">
@@ -536,7 +540,11 @@
                                         {% endif %}
                                     </span>
                                     <span class="flex-grow min-w-[4px]"></span>
-                                    <span class="flex-shrink-0">{{ msg.time }}</span>
+                                    <span class="flex-shrink-0">{{ msg.time }}
+                                        {% if msg.is_deleted is defined and msg.is_deleted %}
+                                        <span class="ml-1 px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[9px] font-medium">DELETED</span>
+                                        {% endif %}
+                                    </span>
                                     </div>
                                 {% if msg.reactions %}
                                 <div class="flex flex-wrap gap-1 mt-1 justify-start absolute -bottom-3 -left-2">

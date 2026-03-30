@@ -1003,7 +1003,53 @@ def main():
     # Handle multi-DB comparison (standalone mode)
     if hasattr(args, 'compare_dbs') and args.compare_dbs:
         logging.info(f"Comparing {len(args.compare_dbs)} databases...")
-        compare_databases_interactive(args.compare_dbs, args.compare_output)
+        from Whatsapp_Chat_Exporter.db_comparator import DatabaseComparator
+
+        comparator = DatabaseComparator()
+        db_paths = args.compare_dbs
+
+        # Check for encrypted files and decrypt with key
+        encrypted = [p for p in db_paths if any(x in p for x in ["crypt12", "crypt14", "crypt15"])]
+        decrypted = [p for p in db_paths if p not in encrypted]
+
+        if encrypted:
+            key = getattr(args, 'key', None)
+            if not key:
+                logging.error("Encrypted backups detected. Provide the key with -k.")
+                exit(1)
+            decrypt_dir = os.path.join(args.compare_output, "_decrypted")
+            decrypted += comparator.batch_decrypt(encrypted, key, decrypt_dir)
+
+        for path in decrypted:
+            comparator.add_database(path)
+
+        report = comparator.compare()
+        comparator.print_report(report)
+
+        os.makedirs(args.compare_output, exist_ok=True)
+        comparator.export_report_json(report, os.path.join(args.compare_output, "comparison_report.json"))
+        if report.deleted_messages:
+            comparator.export_deleted_messages_txt(report, os.path.join(args.compare_output, "deleted_messages.txt"))
+
+        # Generate merged export with deleted messages marked
+        merged_data = comparator.merge_to_collection()
+        logging.info("Generating merged export with deleted messages highlighted...")
+        android_handler.create_html(
+            merged_data, args.compare_output,
+            None, False, False, None, False, False, "Chat history with ??"
+        )
+
+        # Also export PDF/Markdown if requested
+        if hasattr(args, 'pdf_export') and args.pdf_export:
+            plugin = get_plugin("pdf")
+            if plugin:
+                plugin.export_all(merged_data, os.path.join(args.compare_output, "pdf"))
+        if hasattr(args, 'markdown_export') and args.markdown_export:
+            plugin = get_plugin("markdown")
+            if plugin:
+                plugin.export_all(merged_data, os.path.join(args.compare_output, "markdown"))
+
+        logging.info(f"All results saved to: {args.compare_output}/")
         exit(0)
 
     # Handle connected mode - retrieve key via WhatsApp verification
