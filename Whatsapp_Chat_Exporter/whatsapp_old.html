@@ -132,9 +132,9 @@
 							{% if msg.meta == true or msg.media == false and msg.data is none %}
 								<div class="w3-panel w3-border-blue w3-pale-blue w3-rightbar w3-leftbar w3-threequarter w3-center">
 									{% if msg.safe %}
-									<p>{{ msg.data | safe or 'Not supported WhatsApp internal message' }}</p>
+									<p>{{ msg.data | safe or 'System message' }}</p>
 									{% else %}
-									<p>{{ msg.data or 'Not supported WhatsApp internal message' }}</p>
+									<p>{{ msg.data or 'System message' }}</p>
 									{% endif %}
 								</div>
 								{% if msg.caption is not none %}
@@ -222,9 +222,9 @@
 							{% if msg.meta == true or msg.media == false and msg.data is none %}
 								<div class="w3-panel w3-border-blue w3-pale-blue w3-rightbar w3-leftbar w3-threequarter w3-center">
 									{% if msg.safe %}
-									<p>{{ msg.data | safe or 'Not supported WhatsApp internal message' }}</p>
+									<p>{{ msg.data | safe or 'System message' }}</p>
 									{% else %}
-									<p>{{ msg.data or 'Not supported WhatsApp internal message' }}</p>
+									<p>{{ msg.data or 'System message' }}</p>
 									{% endif %}
 								</div>
 								{% if msg.caption is not none %}

@@ -305,8 +305,30 @@ GUI_TEMPLATE = r'''
                     </div>
                 </section>
 
+                <!-- Chat Selection -->
+                <section id="chatSelectionSection" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Select Chats to Export</h2>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="toggleAllChats(true)" class="px-3 py-1 text-xs bg-whatsapp text-white rounded-lg">Select All</button>
+                            <button type="button" onclick="toggleAllChats(false)" class="px-3 py-1 text-xs border border-gray-300 rounded-lg">Deselect All</button>
+                        </div>
+                    </div>
+                    <input type="text" id="chatSearchInput" placeholder="Search chats..."
+                           class="w-full px-3 py-2 mb-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none"
+                           oninput="filterChatList()">
+                    <div id="chatListContainer" class="max-h-80 overflow-y-auto border border-gray-200 rounded-lg">
+                        <p class="p-4 text-gray-400 text-sm">Click "Scan Chats" to load available conversations...</p>
+                    </div>
+                    <p id="chatSelectionCount" class="text-xs text-gray-500 mt-2"></p>
+                </section>
+
                 <!-- Submit -->
                 <div class="flex justify-end gap-4">
+                    <button type="button" onclick="scanChats()" id="scanBtn"
+                            class="px-6 py-2.5 border-2 border-whatsapp text-whatsapp rounded-lg text-sm font-medium hover:bg-whatsapp/5 transition-colors">
+                        Scan Chats
+                    </button>
                     <button type="button" onclick="generateCommand()"
                             class="px-6 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                         Show Command
@@ -403,6 +425,13 @@ GUI_TEMPLATE = r'''
         if (data.fix_dot_files) args.push('--fix-dot-files');
         if (data.chat_name) { data.chat_name.split(',').map(s => s.trim()).filter(Boolean).forEach(n => { args.push('--chat-name'); args.push(n); }); }
         if (data.date_filter) { args.push('--date'); args.push(data.date_filter); }
+        // Selected chats (via phone number include filter)
+        if (data.selected_chats && data.selected_chats.length > 0) {
+            data.selected_chats.forEach(jid => {
+                const phone = jid.split('@')[0];
+                if (phone) { args.push('--include'); args.push(phone); }
+            });
+        }
         return args;
     }
 
@@ -416,6 +445,85 @@ GUI_TEMPLATE = r'''
     function copyCommand() {
         const text = document.getElementById('commandOutput').textContent;
         navigator.clipboard.writeText(text);
+    }
+
+    // Chat scanning and selection
+    async function scanChats() {
+        const data = getFormData();
+        const btn = document.getElementById('scanBtn');
+        btn.disabled = true;
+        btn.textContent = 'Scanning...';
+
+        try {
+            const response = await fetch('/api/list-chats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+
+            if (result.error) {
+                alert('Error: ' + result.error);
+                return;
+            }
+
+            const container = document.getElementById('chatListContainer');
+            container.innerHTML = '';
+
+            result.chats.forEach((chat, i) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-3 p-3 border-b border-gray-100 hover:bg-gray-50 chat-item';
+                div.dataset.name = (chat.name || '').toLowerCase();
+                div.innerHTML = `
+                    <input type="checkbox" checked class="chat-checkbox w-4 h-4 text-whatsapp rounded focus:ring-whatsapp"
+                           value="${chat.jid}" id="chat-${i}">
+                    <label for="chat-${i}" class="flex-1 cursor-pointer">
+                        <span class="font-medium text-sm text-gray-800">${chat.name || chat.jid}</span>
+                        <span class="text-xs text-gray-400 ml-2">${chat.message_count} messages</span>
+                    </label>
+                `;
+                container.appendChild(div);
+            });
+
+            document.getElementById('chatSelectionSection').classList.remove('hidden');
+            updateChatCount();
+        } catch (err) {
+            alert('Error scanning chats: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Scan Chats';
+        }
+    }
+
+    function toggleAllChats(checked) {
+        document.querySelectorAll('.chat-checkbox').forEach(cb => cb.checked = checked);
+        updateChatCount();
+    }
+
+    function filterChatList() {
+        const search = document.getElementById('chatSearchInput').value.toLowerCase();
+        document.querySelectorAll('.chat-item').forEach(item => {
+            item.style.display = item.dataset.name.includes(search) ? '' : 'none';
+        });
+    }
+
+    function updateChatCount() {
+        const total = document.querySelectorAll('.chat-checkbox').length;
+        const selected = document.querySelectorAll('.chat-checkbox:checked').length;
+        document.getElementById('chatSelectionCount').textContent = `${selected} / ${total} chats selected`;
+    }
+
+    // Observe checkbox changes
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('chat-checkbox')) updateChatCount();
+    });
+
+    function getSelectedChats() {
+        const checkboxes = document.querySelectorAll('.chat-checkbox:checked');
+        if (checkboxes.length === 0) return [];
+        const allCheckboxes = document.querySelectorAll('.chat-checkbox');
+        if (checkboxes.length === allCheckboxes.length) return []; // All selected = no filter
+        return Array.from(checkboxes).map(cb => cb.value);
     }
 
     function clearLogs() {
@@ -435,6 +543,7 @@ GUI_TEMPLATE = r'''
     document.getElementById('exportForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const data = getFormData();
+        data.selected_chats = getSelectedChats();
         const btn = document.getElementById('exportBtn');
         btn.disabled = true;
         btn.textContent = 'Exporting...';
@@ -575,6 +684,14 @@ def create_app() -> 'Flask':
             if date_filter:
                 args.extend(['--date', date_filter])
 
+            # Selected chats filter
+            selected_chats = data.get('selected_chats', [])
+            if selected_chats:
+                for jid in selected_chats:
+                    phone = jid.split('@')[0] if '@' in jid else jid
+                    if phone:
+                        args.extend(['--include', phone])
+
             yield json.dumps({"type": "info", "message": f"Running: {' '.join(args)}"}) + "\n"
 
             try:
@@ -600,6 +717,110 @@ def create_app() -> 'Flask':
                 yield json.dumps({"type": "error", "message": str(e)}) + "\n"
 
         return Response(stream_with_context(generate()), mimetype='text/plain')
+
+    @app.route('/api/list-chats', methods=['POST'])
+    def list_chats():
+        """Scan database and list available chats for selection."""
+        import sqlite3
+        data = request.get_json()
+        device = data.get('device', 'android')
+
+        # Determine DB path
+        db_path = data.get('db', '')
+
+        # Handle encrypted backup: decrypt first if needed
+        backup = data.get('backup', '')
+        key_input = data.get('key', '')
+        if backup and key_input and device == 'android':
+            # Try to decrypt first
+            import subprocess
+            decrypt_args = ['python', '-m', 'Whatsapp_Chat_Exporter', '-a',
+                          '--no-html', '--no-banner', '-b', backup, '-k', key_input]
+            if db_path:
+                decrypt_args.extend(['-d', db_path])
+            else:
+                db_path = 'msgstore.db'
+                decrypt_args.extend(['-d', db_path])
+            # Run a quick decrypt-only pass
+            try:
+                subprocess.run(decrypt_args + ['-j', '/dev/null'],
+                             capture_output=True, text=True, timeout=120)
+            except Exception:
+                pass
+
+        if not db_path:
+            db_path = 'msgstore.db' if device == 'android' else '7c7fba66680ef796b916b067077cc246adacf01d'
+
+        if not os.path.isfile(db_path):
+            return jsonify({"error": f"Database not found: {db_path}. "
+                          "Make sure the file exists or decrypt the backup first."})
+
+        chats = []
+        try:
+            with sqlite3.connect(db_path) as db:
+                db.row_factory = sqlite3.Row
+                c = db.cursor()
+
+                if device == 'android':
+                    # Try new schema first
+                    try:
+                        c.execute("""
+                            SELECT COALESCE(jid.raw_string, '') as jid,
+                                   chat.subject as name,
+                                   COUNT(message._id) as msg_count
+                            FROM chat
+                                INNER JOIN jid ON jid._id = chat.jid_row_id
+                                LEFT JOIN message ON message.chat_row_id = chat._id
+                            GROUP BY chat._id
+                            HAVING msg_count > 0
+                            ORDER BY MAX(message.timestamp) DESC
+                        """)
+                    except sqlite3.OperationalError:
+                        # Legacy schema
+                        c.execute("""
+                            SELECT DISTINCT key_remote_jid as jid,
+                                   NULL as name,
+                                   COUNT(*) as msg_count
+                            FROM messages
+                            WHERE key_remote_jid != '-1'
+                            GROUP BY key_remote_jid
+                            HAVING msg_count > 0
+                            ORDER BY MAX(timestamp) DESC
+                        """)
+
+                    for row in c.fetchall():
+                        jid = row['jid'] or ''
+                        name = row['name']
+                        if not name and '@' in jid:
+                            name = jid.split('@')[0]
+                        chats.append({
+                            "jid": jid,
+                            "name": name or jid,
+                            "message_count": row['msg_count']
+                        })
+                else:
+                    # iOS
+                    c.execute("""
+                        SELECT ZCONTACTJID as jid,
+                               ZPARTNERNAME as name,
+                               COUNT(ZWAMESSAGE.Z_PK) as msg_count
+                        FROM ZWACHATSESSION
+                            LEFT JOIN ZWAMESSAGE ON ZWAMESSAGE.ZCHATSESSION = ZWACHATSESSION.Z_PK
+                        GROUP BY ZCONTACTJID
+                        HAVING msg_count > 0
+                        ORDER BY MAX(ZWAMESSAGE.ZMESSAGEDATE) DESC
+                    """)
+                    for row in c.fetchall():
+                        chats.append({
+                            "jid": row['jid'] or '',
+                            "name": row['name'] or (row['jid'] or '').split('@')[0],
+                            "message_count": row['msg_count']
+                        })
+
+        except Exception as e:
+            return jsonify({"error": str(e)})
+
+        return jsonify({"chats": chats})
 
     return app
 

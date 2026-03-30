@@ -676,11 +676,11 @@ def determine_metadata(content: sqlite3.Row, init_msg: Optional[str]) -> Optiona
     elif content["action_type"] == 12:
         msg += f" added someone"  # TODO: Find out who
     elif content["action_type"] == 13:
-        return  # Someone left the group
+        msg += " left the group"
     elif content["action_type"] == 14:
-        msg += f" removed someone"  # TODO: Find out who
+        msg += " removed someone"
     elif content["action_type"] == 15:
-        return  # Someone promoted someone as an admin
+        msg += " was promoted to admin"
     elif content["action_type"] == 18:
         if msg != "You":
             msg = f"The security code between you and {msg} changed"
@@ -702,13 +702,13 @@ def determine_metadata(content: sqlite3.Row, init_msg: Optional[str]) -> Optiona
         else:
             msg = f"{old} changed their number to {new}"
     elif content["action_type"] == 46:
-        return  # Voice message in PM??? Seems no need to handle.
+        msg = "Voice message"
     elif content["action_type"] == 47:
         msg = "The contact is an official business account"
     elif content["action_type"] == 50:
         msg = "The contact's account type changed from business to standard"
     elif content["action_type"] == 56:
-        msg = "Messgae timer was enabled/updated/disabled"
+        msg = "Message timer was enabled/updated/disabled"
     elif content["action_type"] == 57:
         if msg != "You":
             msg = f"The security code between you and {msg} changed"
@@ -717,12 +717,30 @@ def determine_metadata(content: sqlite3.Row, init_msg: Optional[str]) -> Optiona
     elif content["action_type"] == 58:
         msg = "You blocked/unblocked this contact"
     elif content["action_type"] == 67:
-        return  # (PM) this contact use secure service from Facebook???
+        msg = "This contact uses end-to-end encryption from Meta"
     elif content["action_type"] == 69:
-        # (PM) this contact use secure service from Facebook??? What's the difference with 67????
-        return
+        msg = "This contact uses a secure service from Meta"
+    elif content["action_type"] == 70:
+        msg = "Chat locked"
+    elif content["action_type"] == 71:
+        msg = "Chat unlocked"
+    elif content["action_type"] == 72:
+        msg += " added a poll"
+    elif content["action_type"] == 73:
+        msg = "Community announcement"
+    elif content["action_type"] == 76:
+        msg = "AI features notice"
+    elif content["action_type"] == 77:
+        msg = "Channel update"
+    elif content["action_type"] is None:
+        # action_type can be NULL in some DB versions
+        if content.get("data"):
+            msg = str(content["data"])
+        else:
+            msg = None
     else:
-        return  # Unsupported
+        # Unknown action_type - show the type number for debugging
+        msg = f"System event (type {content['action_type']})"
     return msg
 
 

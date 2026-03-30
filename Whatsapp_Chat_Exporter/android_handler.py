@@ -391,6 +391,10 @@ def _process_single_message(data, content, table_message, timezone_offset):
         # Real message
         _process_regular_message(message, content, table_message)
 
+    # Skip truly empty system messages instead of showing "Not supported"
+    if message.meta and message.data is None:
+        return
+
     current_chat.add_message(content["_id"], message)
 
 
@@ -460,9 +464,15 @@ def _process_metadata_message(message, content, data, table_message):
                 message.data = "A video call was missed"
             elif content["video_call"] == 0:
                 message.data = "A voice call was missed"
-        elif content["data"] is None and content["thumb_image"] is None:
-            message.meta = True
+        elif content["data"] is not None:
+            # There's text data but determine_metadata returned None
+            message.data = str(content["data"])
+        elif content["thumb_image"] is not None:
+            message.data = "Media message"
+        else:
+            # Truly empty system message - mark to skip
             message.data = None
+            message.meta = True
 
 
 def _process_regular_message(message, content, table_message):
