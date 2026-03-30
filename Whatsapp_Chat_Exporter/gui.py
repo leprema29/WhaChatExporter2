@@ -385,7 +385,38 @@ GUI_TEMPLATE = r'''
                             <h3 class="font-semibold text-purple-800 text-sm mb-2">Method 3: Using wa-crypt-tools</h3>
                             <p class="text-sm text-gray-700"><code class="bg-gray-100 px-1 rounded text-xs">pip install wa-crypt-tools</code> then follow its docs.</p>
                         </div>
+
+                        <!-- Method 4: Emulator -->
+                        <div class="border border-orange-200 rounded-lg p-4 bg-orange-50/50">
+                            <h3 class="font-semibold text-orange-800 text-sm mb-2">Method 4: Android Emulator (if no access to phone)</h3>
+                            <ol class="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+                                <li>Install <a href="https://www.genymotion.com/download/" class="text-blue-600 underline" target="_blank">Genymotion</a> (free for personal use)</li>
+                                <li>Create an Android 11+ device with <b>Google Play</b> (or use BlueStacks)</li>
+                                <li>Install <b>WhatsApp</b> from Play Store in the emulator</li>
+                                <li>Register with your phone number (SMS will go to your real phone)</li>
+                                <li>Once WhatsApp is set up, click <b>"Extract Key from Emulator"</b> below</li>
+                            </ol>
+                            <p class="text-xs text-orange-600 mt-2">The emulator is rooted by default so we can extract the key directly.</p>
+                        </div>
                     </div>
+                </section>
+
+                <!-- Emulator Extraction -->
+                <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Emulator / ADB Extraction</h2>
+                    <p class="text-sm text-gray-500 mb-4">Detects connected Android devices and emulators, checks WhatsApp status, and extracts the key automatically.</p>
+
+                    <div class="flex gap-3 mb-4">
+                        <button type="button" onclick="checkAdbDevices()"
+                                class="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
+                            1. Check Connected Devices
+                        </button>
+                        <button type="button" onclick="extractFromAdb()" id="extractAdbBtn" disabled
+                                class="px-5 py-2 bg-whatsapp text-white rounded-lg text-sm font-semibold hover:bg-whatsapp-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            2. Extract Key
+                        </button>
+                    </div>
+                    <div id="adbStatus" class="text-sm text-gray-600"></div>
                 </section>
 
                 <!-- Key Input -->
@@ -702,9 +733,44 @@ GUI_TEMPLATE = r'''
         }
     }
 
+    async function checkAdbDevices() {
+        const statusDiv = document.getElementById('adbStatus');
+        statusDiv.innerHTML = '<p class="text-gray-400">Checking devices...</p>';
+        try {
+            const resp = await fetch('/api/connected/adb-status', { method: 'POST' });
+            const result = await resp.json();
+            if (!result.available) {
+                statusDiv.innerHTML = `<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">${result.error || 'ADB not available'}<br><br>Install <a href="https://developer.android.com/tools/releases/platform-tools" class="underline" target="_blank">Android Platform Tools</a> and add to PATH.</div>`;
+                return;
+            }
+            if (result.devices.length === 0) {
+                statusDiv.innerHTML = '<div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">No devices found. Make sure your emulator is running or phone is connected with USB debugging enabled.</div>';
+                return;
+            }
+            let html = '<div class="space-y-2">';
+            for (const dev of result.devices) {
+                const model = dev.model || dev.type || 'unknown';
+                const waStatus = dev.whatsapp_installed ?
+                    `<span class="text-green-600">WhatsApp installed${dev.has_key ? ' (key found!)' : ''}</span>` :
+                    '<span class="text-red-600">WhatsApp not installed</span>';
+                const rootStatus = dev.is_root ? '<span class="text-green-600">rooted</span>' : '<span class="text-yellow-600">not rooted</span>';
+                html += `<div class="p-3 bg-gray-50 border rounded-lg flex justify-between items-center">
+                    <div><b>${dev.serial}</b> (${model}) - ${rootStatus} - ${waStatus}</div>
+                </div>`;
+            }
+            html += '</div>';
+            statusDiv.innerHTML = html;
+            document.getElementById('extractAdbBtn').disabled = false;
+        } catch(e) {
+            statusDiv.innerHTML = `<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">${e.message}</div>`;
+        }
+    }
+
     async function extractFromAdb() {
         document.getElementById('connError').classList.add('hidden');
         document.getElementById('connResult').classList.add('hidden');
+        const statusDiv = document.getElementById('adbStatus');
+        statusDiv.innerHTML += '<p class="text-gray-400 mt-2">Extracting key...</p>';
         try {
             const resp = await fetch('/api/connected/adb-extract', { method: 'POST' });
             const result = await resp.json();
@@ -714,6 +780,7 @@ GUI_TEMPLATE = r'''
             } else if (result.key) {
                 document.getElementById('connKey').textContent = result.key;
                 document.getElementById('connResult').classList.remove('hidden');
+                statusDiv.innerHTML += '<p class="text-green-600 mt-2 font-semibold">Key extracted successfully!</p>';
             }
         } catch(e) {
             document.getElementById('connErrorMsg').textContent = e.message;
@@ -1096,17 +1163,34 @@ def create_app() -> 'Flask':
         except Exception as e:
             return jsonify({"error": str(e)})
 
+    @app.route('/api/connected/adb-status', methods=['POST'])
+    def connected_adb_status():
+        """Check ADB devices and WhatsApp status on each."""
+        try:
+            from Whatsapp_Chat_Exporter.wa_connected import check_adb_status, check_whatsapp_on_device
+            status = check_adb_status()
+            if status["available"] and status["devices"]:
+                for dev in status["devices"]:
+                    wa_info = check_whatsapp_on_device(dev["serial"])
+                    dev["whatsapp_installed"] = wa_info.get("installed", False)
+                    dev["whatsapp_version"] = wa_info.get("version")
+                    dev["has_key"] = wa_info.get("has_key", False)
+                    dev["is_root"] = wa_info.get("is_root", False)
+            return jsonify(status)
+        except Exception as e:
+            return jsonify({"available": False, "devices": [], "error": str(e)})
+
     @app.route('/api/connected/adb-extract', methods=['POST'])
     def connected_adb_extract():
-        """Extract key from connected Android device via ADB."""
+        """Extract key from connected Android device/emulator via ADB."""
         try:
-            from Whatsapp_Chat_Exporter.wa_connected import extract_key_from_device_adb
-            key = extract_key_from_device_adb()
+            from Whatsapp_Chat_Exporter.wa_connected import extract_key_adb_auto
+            key = extract_key_adb_auto()
             if key:
                 return jsonify({"key": key})
-            return jsonify({"error": "Could not extract key via ADB. "
-                          "Make sure: (1) ADB is installed, (2) device is connected, "
-                          "(3) device is rooted, (4) WhatsApp is installed."})
+            return jsonify({"error": "Could not extract key. "
+                          "Make sure WhatsApp is installed and set up in the emulator, "
+                          "and that the emulator has root access (most emulators do by default)."})
         except Exception as e:
             return jsonify({"error": str(e)})
 

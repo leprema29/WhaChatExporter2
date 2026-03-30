@@ -97,6 +97,244 @@ def extract_key_from_device_adb() -> Optional[str]:
     return None
 
 
+def check_adb_status() -> dict:
+    """
+    Check ADB connection status and list connected devices.
+
+    Returns:
+        Dict with 'available' (bool), 'devices' (list of device info dicts)
+    """
+    adb = shutil.which("adb")
+    if not adb:
+        return {
+            "available": False,
+            "devices": [],
+            "error": "ADB not found. Install Android SDK Platform Tools: "
+                     "https://developer.android.com/tools/releases/platform-tools"
+        }
+
+    try:
+        result = subprocess.run(
+            [adb, "devices", "-l"],
+            capture_output=True, text=True, timeout=5
+        )
+        devices = []
+        for line in result.stdout.strip().split("\n")[1:]:
+            line = line.strip()
+            if not line or "offline" in line:
+                continue
+            parts = line.split()
+            if len(parts) >= 2 and parts[1] in ("device", "emulator"):
+                dev = {"serial": parts[0], "type": parts[1]}
+                # Parse extra info like model:xxx
+                for p in parts[2:]:
+                    if ":" in p:
+                        k, v = p.split(":", 1)
+                        dev[k] = v
+                devices.append(dev)
+        return {"available": True, "devices": devices}
+    except Exception as e:
+        return {"available": False, "devices": [], "error": str(e)}
+
+
+def check_whatsapp_on_device(serial: str = None) -> dict:
+    """
+    Check if WhatsApp is installed on the ADB device.
+
+    Args:
+        serial: Device serial (None for first device)
+
+    Returns:
+        Dict with 'installed', 'version', 'has_key', etc.
+    """
+    adb = shutil.which("adb")
+    if not adb:
+        return {"installed": False, "error": "ADB not found"}
+
+    adb_cmd = [adb]
+    if serial:
+        adb_cmd.extend(["-s", serial])
+
+    info = {"installed": False, "version": None, "has_key": False, "is_root": False}
+
+    # Check root
+    try:
+        r = subprocess.run(adb_cmd + ["shell", "whoami"], capture_output=True, text=True, timeout=5)
+        info["is_root"] = "root" in r.stdout.strip()
+    except Exception:
+        pass
+
+    # If not root by default, try su
+    if not info["is_root"]:
+        try:
+            r = subprocess.run(
+                adb_cmd + ["shell", "su", "-c", "whoami"],
+                capture_output=True, text=True, timeout=5
+            )
+            info["is_root"] = "root" in r.stdout.strip()
+        except Exception:
+            pass
+
+    # Check WhatsApp installed
+    try:
+        r = subprocess.run(
+            adb_cmd + ["shell", "pm", "list", "packages", "com.whatsapp"],
+            capture_output=True, text=True, timeout=5
+        )
+        info["installed"] = "com.whatsapp" in r.stdout
+    except Exception:
+        pass
+
+    # Check version
+    if info["installed"]:
+        try:
+            r = subprocess.run(
+                adb_cmd + ["shell", "dumpsys", "package", "com.whatsapp", "|", "grep", "versionName"],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in r.stdout.split("\n"):
+                if "versionName" in line:
+                    info["version"] = line.split("=")[-1].strip()
+                    break
+        except Exception:
+            pass
+
+    # Check if key file exists
+    if info["installed"] and info["is_root"]:
+        key_paths = [
+            "/data/data/com.whatsapp/files/encrypted_backup.key",
+            "/data/data/com.whatsapp/files/key",
+        ]
+        su_prefix = ["su", "-c"] if not info["is_root"] else []
+        for kp in key_paths:
+            try:
+                r = subprocess.run(
+                    adb_cmd + ["shell"] + su_prefix + ["ls", "-la", kp],
+                    capture_output=True, text=True, timeout=5
+                )
+                if r.returncode == 0 and kp in r.stdout:
+                    info["has_key"] = True
+                    info["key_path"] = kp
+                    break
+            except Exception:
+                continue
+
+    return info
+
+
+def extract_key_adb_auto(serial: str = None) -> Optional[str]:
+    """
+    Automatically extract the WhatsApp encryption key from an ADB device/emulator.
+    Tries multiple methods:
+    1. Direct file read (root)
+    2. backup + extract
+    3. Pull encrypted_backup.key and parse locally
+
+    Args:
+        serial: Device serial (None for first device)
+
+    Returns:
+        64-char hex key or None
+    """
+    adb = shutil.which("adb")
+    if not adb:
+        return None
+
+    adb_cmd = [adb]
+    if serial:
+        adb_cmd.extend(["-s", serial])
+
+    # Method 1: Direct read with root (works on emulators)
+    key_paths = [
+        "/data/data/com.whatsapp/files/encrypted_backup.key",
+        "/data/data/com.whatsapp/files/key",
+    ]
+
+    for shell_prefix in [[], ["su", "-c"]]:
+        for key_path in key_paths:
+            try:
+                # Try to pull the file directly
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix=".key", delete=False) as tmp:
+                    tmp_path = tmp.name
+
+                if shell_prefix:
+                    # Copy to accessible location first
+                    subprocess.run(
+                        adb_cmd + ["shell"] + shell_prefix + [f"cp {key_path} /sdcard/wa_key_tmp"],
+                        capture_output=True, timeout=5
+                    )
+                    r = subprocess.run(
+                        adb_cmd + ["pull", "/sdcard/wa_key_tmp", tmp_path],
+                        capture_output=True, timeout=10
+                    )
+                    # Clean up
+                    subprocess.run(
+                        adb_cmd + ["shell"] + shell_prefix + ["rm /sdcard/wa_key_tmp"],
+                        capture_output=True, timeout=5
+                    )
+                else:
+                    r = subprocess.run(
+                        adb_cmd + ["pull", key_path, tmp_path],
+                        capture_output=True, timeout=10
+                    )
+
+                if r.returncode == 0 and os.path.isfile(tmp_path) and os.path.getsize(tmp_path) > 0:
+                    key = read_key_file(tmp_path)
+                    os.unlink(tmp_path)
+                    if key:
+                        logging.info(f"Key extracted via ADB pull: {key[:8]}...{key[-8:]}")
+                        return key
+                else:
+                    if os.path.isfile(tmp_path):
+                        os.unlink(tmp_path)
+            except Exception:
+                continue
+
+    # Method 2: Read via shell cat + xxd
+    for shell_prefix in [[], ["su", "-c"]]:
+        for key_path in key_paths:
+            try:
+                cmd = adb_cmd + ["shell"]
+                if shell_prefix:
+                    cmd += shell_prefix + [f"xxd -p -c 256 {key_path}"]
+                else:
+                    cmd += ["xxd", "-p", "-c", "256", key_path]
+
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                hex_out = r.stdout.strip().replace("\n", "")
+                if r.returncode == 0 and len(hex_out) >= 64:
+                    key = hex_out[:64]
+                    if all(c in "0123456789abcdef" for c in key):
+                        logging.info(f"Key extracted via xxd: {key[:8]}...{key[-8:]}")
+                        return key
+            except Exception:
+                continue
+
+    # Method 3: Try cat with od (xxd might not be available)
+    for shell_prefix in [[], ["su", "-c"]]:
+        for key_path in key_paths:
+            try:
+                cmd = adb_cmd + ["shell"]
+                if shell_prefix:
+                    cmd += shell_prefix + [f"cat {key_path} | od -A n -t x1 | tr -d ' \\n'"]
+                else:
+                    cmd_str = f"cat {key_path} | od -A n -t x1 | tr -d ' \\n'"
+                    cmd += ["sh", "-c", cmd_str]
+
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                hex_out = r.stdout.strip()
+                if r.returncode == 0 and len(hex_out) >= 64:
+                    key = hex_out[:64]
+                    if all(c in "0123456789abcdef" for c in key):
+                        logging.info(f"Key extracted via od: {key[:8]}...{key[-8:]}")
+                        return key
+            except Exception:
+                continue
+
+    return None
+
+
 def read_key_file(key_path: str) -> Optional[str]:
     """
     Read and convert a WhatsApp key file to hex string.
