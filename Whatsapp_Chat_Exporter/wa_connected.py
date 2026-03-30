@@ -39,7 +39,7 @@ except ImportError:
 
 
 # WhatsApp API constants
-WA_VERSION = "2.24.6.78"
+WA_VERSION = "2.24.25.83"
 WA_USER_AGENT = f"WhatsApp/{WA_VERSION} A"
 WA_API_BASE = "https://v.whatsapp.net/v2"
 
@@ -89,6 +89,7 @@ class WhatsAppAuthenticator:
         self.session.headers.update({
             "User-Agent": WA_USER_AGENT,
             "Accept": "text/json",
+            "Content-Type": "application/x-www-form-urlencoded",
         })
 
     def _generate_device_id(self) -> str:
@@ -96,11 +97,15 @@ class WhatsAppAuthenticator:
         return secrets.token_hex(16)
 
     def _build_token(self, phone: str) -> str:
-        """Build authentication token."""
-        # WhatsApp uses a specific token generation scheme
-        key = base64.b64decode("eQV5aq/Ihfq/1TGOkXEhJ66vA9N9Z0fkg2BA1Q/qUlI=")
-        data = f"{WA_VERSION}{phone}".encode()
-        token = hmac.new(key, data, hashlib.md5).hexdigest()
+        """Build authentication token for WhatsApp registration API."""
+        # Token is derived from the WhatsApp APK certificate and version
+        # This is the publicly known signature used for registration
+        wa_sig = base64.b64decode(
+            "MIIDMjCCAvCgAwIBAgIETCU2pDALBgcqhkjOOAQDBQAwfDELMAkGA1UEBhMCVVMx"
+            "EzARBgNVBAgTCkNhbGlmb3JuaWExFDASBgNVBAcTC1NhbnRhIENsYXJhMRYwFAYD"
+        )
+        token_data = f"{WA_VERSION}{phone}".encode()
+        token = hmac.new(wa_sig[:32], token_data, hashlib.md5).hexdigest()
         return token
 
     def set_phone_number(self, full_number: str) -> None:
@@ -181,8 +186,22 @@ class WhatsAppAuthenticator:
             "mcc": "000",
             "mnc": "000",
             "method": method,
+            "sim_mcc": "000",
+            "sim_mnc": "000",
             "token": self._build_token(self.phone_number),
             "id": self._generate_device_id(),
+            "mistyped": "6",
+            "network_radio_type": "1",
+            "simnum": "1",
+            "s": "",
+            "copiedrc": "1",
+            "hasinrc": "1",
+            "rcmatch": "1",
+            "pid": str(os.getpid()),
+            "rchash": hashlib.sha256(self.phone_number.encode()).hexdigest()[:20],
+            "anhash": hashlib.md5(self.phone_number.encode()).hexdigest(),
+            "extexist": "1",
+            "extstate": "1",
         }
 
         logging.info(f"Requesting verification code via {method} to +{self.cc}{self.phone}...")
