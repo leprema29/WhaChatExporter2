@@ -156,8 +156,13 @@ GUI_TEMPLATE = r'''
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">Key File</label>
-                            <input type="text" name="key" placeholder=""
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Key (file path or 64 hex chars)</label>
+                            <input type="text" name="key" placeholder="path/to/key OR a1b2c3d4..."
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Key Screenshot (OCR extraction)</label>
+                            <input type="text" name="key_image" placeholder="path/to/screenshot.png"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
                         </div>
                         <div>
@@ -635,6 +640,8 @@ def create_app() -> 'Flask':
                 args.extend(['-b', data['backup']])
             if data.get('key'):
                 args.extend(['-k', data['key']])
+            if data.get('key_image'):
+                args.extend(['--key-image', data['key_image']])
             if data.get('output'):
                 args.extend(['-o', data['output']])
             tz = data.get('timezone_offset', '0')

@@ -204,9 +204,42 @@ class PDFExportPlugin(ExportPlugin):
                 if msg.data == "The media is missing":
                     pdf.set_font("Helvetica", "I", 8)
                     pdf.cell(0, 5, "[Media missing]", new_x="LMARGIN", new_y="NEXT")
+                elif msg.mime and msg.mime.startswith("image/") and os.path.isfile(msg.data):
+                    try:
+                        img_w = min(pdf.w - pdf.l_margin - pdf.r_margin, 80)
+                        pdf.image(msg.data, w=img_w)
+                        pdf.ln(2)
+                    except Exception:
+                        pdf.set_font("Helvetica", "I", 8)
+                        pdf.cell(0, 5, f"[Image: {self._safe_text(os.path.basename(msg.data))}]", new_x="LMARGIN", new_y="NEXT")
+                elif msg.mime and msg.mime.startswith("audio/"):
+                    pdf.set_font("Helvetica", "I", 8)
+                    pdf.set_text_color(100, 100, 100)
+                    duration_text = ""
+                    if msg.caption and msg.caption.startswith('"') and msg.caption.endswith('"'):
+                        duration_text = f" - Transcription: {self._safe_text(msg.caption)}"
+                        msg.caption = None  # Don't print caption twice
+                    pdf.cell(0, 5, f"[Voice message{duration_text}]", new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_text_color(0, 0, 0)
+                elif msg.mime and msg.mime.startswith("video/"):
+                    pdf.set_font("Helvetica", "I", 8)
+                    pdf.set_text_color(100, 100, 100)
+                    fname = os.path.basename(msg.data) if os.path.isfile(msg.data) else "missing"
+                    pdf.cell(0, 5, f"[Video: {self._safe_text(fname)}]", new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_text_color(0, 0, 0)
+                    # If thumbnail exists, embed it
+                    if hasattr(msg, 'thumb') and msg.thumb and os.path.isfile(msg.thumb):
+                        try:
+                            pdf.image(msg.thumb, w=40)
+                            pdf.ln(1)
+                        except Exception:
+                            pass
+                elif msg.mime and "vcard" in msg.mime:
+                    pdf.set_font("Helvetica", "I", 8)
+                    pdf.cell(0, 5, "[Contact card]", new_x="LMARGIN", new_y="NEXT")
                 else:
                     pdf.set_font("Helvetica", "I", 8)
-                    pdf.cell(0, 5, f"[Media: {self._safe_text(msg.data)}]", new_x="LMARGIN", new_y="NEXT")
+                    pdf.cell(0, 5, f"[File: {self._safe_text(os.path.basename(msg.data) if os.path.isfile(msg.data) else msg.data)}]", new_x="LMARGIN", new_y="NEXT")
                 pdf.set_font("Helvetica", "", 9)
             elif msg.data:
                 data = self._safe_text(msg.data)

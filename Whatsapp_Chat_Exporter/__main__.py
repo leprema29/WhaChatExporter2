@@ -20,6 +20,7 @@ from Whatsapp_Chat_Exporter.utility import get_transcription_selection, check_ji
 from Whatsapp_Chat_Exporter.config import find_config_file, load_config, apply_config_to_args, generate_sample_config
 from Whatsapp_Chat_Exporter.export_plugins import get_plugin, list_plugins
 from Whatsapp_Chat_Exporter.anonymizer import Anonymizer
+from Whatsapp_Chat_Exporter.key_extractor import extract_key_from_image, clean_key_input
 from argparse import ArgumentParser, SUPPRESS
 from datetime import datetime
 from getpass import getpass
@@ -100,7 +101,11 @@ def setup_argument_parser() -> ArgumentParser:
     )
     input_group.add_argument(
         "-k", "--key", dest="key", default=None, nargs='?',
-        help="Path to key file. If this option is set for crypt15 backup but nothing is specified, you will be prompted to enter the key."
+        help="Path to key file, or hex key string (64 hex chars). If set for crypt15 but nothing specified, you will be prompted."
+    )
+    input_group.add_argument(
+        "--key-image", dest="key_image", default=None,
+        help="Path to a screenshot of the WhatsApp encryption key. The key will be extracted via OCR."
     )
     input_group.add_argument(
         "--call-db", dest="call_db_ios", nargs='?', default=None, type=str,
@@ -408,9 +413,25 @@ def validate_args(parser: ArgumentParser, args) -> None:
     if args.filter_date is not None:
         process_date_filter(parser, args)
 
-    # Crypt15 key validation
+    # Key from image (OCR)
+    if hasattr(args, 'key_image') and args.key_image is not None:
+        extracted = extract_key_from_image(args.key_image)
+        if extracted:
+            logging.info(f"Key extracted from image: {extracted[:8]}...{extracted[-8:]}")
+            args.key = extracted
+        else:
+            parser.error("Could not extract encryption key from the image. "
+                        "Try entering it manually with -k.")
+
+    # Clean key input (handle spaces, dashes, colons, etc.)
+    if args.key is not None and not os.path.isfile(args.key):
+        cleaned = clean_key_input(args.key)
+        if cleaned:
+            args.key = cleaned
+
+    # Crypt15 key validation - prompt if not provided
     if args.key is None and args.backup is not None and args.backup.endswith("crypt15"):
-        args.key = getpass("Enter your encryption key: ")
+        args.key = getpass("Enter your encryption key (64 hex characters): ")
 
     # Theme validation
     if args.telegram_theme:

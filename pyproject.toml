@@ -51,6 +51,7 @@ backup = ["pycryptodome", "javaobj-py3"]
 whisper = ["openai-whisper"]
 pdf = ["fpdf2"]
 gui = ["flask"]
+ocr = ["pytesseract", "Pillow"]
 
 [project.scripts]
 wtsexporter = "Whatsapp_Chat_Exporter.__main__:main"
