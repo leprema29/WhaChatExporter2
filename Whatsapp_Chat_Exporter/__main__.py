@@ -22,6 +22,7 @@ from Whatsapp_Chat_Exporter.export_plugins import get_plugin, list_plugins
 from Whatsapp_Chat_Exporter.anonymizer import Anonymizer
 from Whatsapp_Chat_Exporter.key_extractor import extract_key_from_image, clean_key_input
 from Whatsapp_Chat_Exporter.wa_connected import interactive_connected_mode
+from Whatsapp_Chat_Exporter.cloud_extractor import interactive_cloud_extraction
 from Whatsapp_Chat_Exporter.db_comparator import compare_databases_interactive
 from argparse import ArgumentParser, SUPPRESS
 from datetime import datetime
@@ -328,7 +329,15 @@ def setup_argument_parser() -> ArgumentParser:
     connected_group = parser.add_argument_group('Connected Mode')
     connected_group.add_argument(
         "--connected", dest="connected_mode", default=False, action='store_true',
-        help="Retrieve encryption key via WhatsApp verification (SMS/call). Requires 'requests' package."
+        help="Interactive key retrieval (manual entry, key file, screenshot, ADB extraction)"
+    )
+    connected_group.add_argument(
+        "--cloud", dest="cloud_mode", default=False, action='store_true',
+        help="Download WhatsApp backups from Google Drive (like UFED Cloud / Oxygen Cloud)"
+    )
+    connected_group.add_argument(
+        "--google-secret", dest="google_secret", default=None,
+        help="Path to Google OAuth client_secret.json for cloud extraction"
     )
 
     # Multi-DB comparison
@@ -1052,7 +1061,24 @@ def main():
         logging.info(f"All results saved to: {args.compare_output}/")
         exit(0)
 
-    # Handle connected mode - retrieve key via WhatsApp verification
+    # Handle cloud mode - download backups from Google Drive
+    if hasattr(args, 'cloud_mode') and args.cloud_mode:
+        downloaded = interactive_cloud_extraction(
+            getattr(args, 'google_secret', None),
+            os.path.join(args.output, "gdrive_backups")
+        )
+        if downloaded:
+            # Auto-set the first crypt file as backup
+            crypt_files = [f for f in downloaded if "crypt" in f]
+            if crypt_files and not args.backup:
+                args.backup = crypt_files[0]
+                args.android = True
+                logging.info(f"Using downloaded backup: {args.backup}")
+        else:
+            logging.error("No backups downloaded from Google Drive.")
+            exit(1)
+
+    # Handle connected mode - retrieve key
     if hasattr(args, 'connected_mode') and args.connected_mode:
         key = interactive_connected_mode()
         if key:

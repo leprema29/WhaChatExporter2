@@ -401,6 +401,25 @@ GUI_TEMPLATE = r'''
                     </div>
                 </section>
 
+                <!-- Google Drive Cloud Extraction -->
+                <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-2">Google Drive Cloud Extraction</h2>
+                    <p class="text-sm text-gray-500 mb-4">Download WhatsApp backups directly from your Google Drive (same method as UFED Cloud / Oxygen Cloud).</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Google OAuth client_secret.json path</label>
+                            <input type="text" id="googleSecret" placeholder="C:\path\to\client_secret.json"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <p class="text-xs text-gray-400 mt-1">Get one from <a href="https://console.cloud.google.com/apis/credentials" class="text-blue-500 underline" target="_blank">Google Cloud Console</a>: Create project &gt; Enable Drive API &gt; Create OAuth Client ID (Desktop)</p>
+                        </div>
+                        <button type="button" onclick="startCloudExtraction()"
+                                class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
+                            Connect to Google Drive
+                        </button>
+                        <div id="cloudStatus" class="text-sm text-gray-600"></div>
+                    </div>
+                </section>
+
                 <!-- Emulator Extraction -->
                 <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">Emulator / ADB Extraction</h2>
@@ -730,6 +749,37 @@ GUI_TEMPLATE = r'''
         } catch(e) {
             document.getElementById('connErrorMsg').textContent = e.message;
             document.getElementById('connError').classList.remove('hidden');
+        }
+    }
+
+    async function startCloudExtraction() {
+        const secret = document.getElementById('googleSecret').value.trim();
+        if (!secret) { alert('Provide the path to client_secret.json'); return; }
+        const statusDiv = document.getElementById('cloudStatus');
+        statusDiv.innerHTML = '<p class="text-blue-500">Connecting to Google Drive... (browser will open for login)</p>';
+        try {
+            const resp = await fetch('/api/cloud/extract', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({client_secret: secret})
+            });
+            const result = await resp.json();
+            if (result.error) {
+                statusDiv.innerHTML = `<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">${result.error}</div>`;
+            } else if (result.files && result.files.length > 0) {
+                let html = `<div class="p-3 bg-green-50 border border-green-200 rounded-lg"><p class="font-semibold text-green-800">Found ${result.files.length} backup(s):</p><ul class="mt-2 text-sm text-green-700">`;
+                result.files.forEach(f => { html += `<li>${f.name} (${(f.size/1048576).toFixed(1)} MB) - ${f.date.substring(0,10)}</li>`; });
+                html += `</ul>`;
+                if (result.downloaded) {
+                    html += `<p class="mt-2 text-sm text-green-600">Downloaded to: ${result.output_dir}</p>`;
+                    html += `<button type="button" onclick="document.querySelector('input[name=backup]').value='${result.downloaded[0].replace(/\\\\/g,'\\\\\\\\')}'; showTab('config');" class="mt-2 px-4 py-1.5 bg-whatsapp text-white rounded-lg text-sm hover:bg-whatsapp-dark">Use First Backup for Export</button>`;
+                }
+                html += `</div>`;
+                statusDiv.innerHTML = html;
+            } else {
+                statusDiv.innerHTML = '<div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">No WhatsApp backups found on Google Drive.</div>';
+            }
+        } catch(e) {
+            statusDiv.innerHTML = `<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">${e.message}</div>`;
         }
     }
 
@@ -1191,6 +1241,29 @@ def create_app() -> 'Flask':
             return jsonify({"error": "Could not extract key. "
                           "Make sure WhatsApp is installed and set up in the emulator, "
                           "and that the emulator has root access (most emulators do by default)."})
+        except Exception as e:
+            return jsonify({"error": str(e)})
+
+    @app.route('/api/cloud/extract', methods=['POST'])
+    def cloud_extract():
+        """Extract WhatsApp backups from Google Drive."""
+        data = request.get_json()
+        client_secret = data.get('client_secret', '')
+        try:
+            from Whatsapp_Chat_Exporter.cloud_extractor import CloudExtractor
+            extractor = CloudExtractor(client_secret)
+            if not extractor.authenticate():
+                return jsonify({"error": "Authentication failed. Check your client_secret.json file."})
+            backups = extractor.list_whatsapp_backups()
+            output_dir = os.path.join("result", "gdrive_backups")
+            downloaded = extractor.download_all_backups(output_dir)
+            return jsonify({
+                "files": backups,
+                "downloaded": downloaded,
+                "output_dir": output_dir,
+            })
+        except ImportError as e:
+            return jsonify({"error": str(e)})
         except Exception as e:
             return jsonify({"error": str(e)})
 
