@@ -1100,7 +1100,7 @@ def create_app() -> 'Flask':
         def generate():
             import subprocess
             # Build CLI args from form data
-            args = ['python', '-m', 'Whatsapp_Chat_Exporter', '--no-banner']
+            args = [sys.executable, '-m', 'Whatsapp_Chat_Exporter', '--no-banner']
 
             device = data.get('device', 'android')
             if device == 'android':
@@ -1223,7 +1223,7 @@ def create_app() -> 'Flask':
         if backup and key_input and device == 'android':
             # Try to decrypt first
             import subprocess
-            decrypt_args = ['python', '-m', 'Whatsapp_Chat_Exporter', '-a',
+            decrypt_args = [sys.executable, '-m', 'Whatsapp_Chat_Exporter', '-a',
                           '--no-html', '--no-banner', '-b', backup, '-k', key_input]
             if db_path:
                 decrypt_args.extend(['-d', db_path])
