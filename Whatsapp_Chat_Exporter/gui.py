@@ -143,38 +143,67 @@ GUI_TEMPLATE = r'''
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Message Database</label>
-                            <input type="text" name="db" placeholder="msgstore.db"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" name="db" placeholder="msgstore.db"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('db', 'Database files|*.db;*.sqlite;*.crypt12;*.crypt14;*.crypt15|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Contact Database</label>
-                            <input type="text" name="wa" placeholder="wa.db"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" name="wa" placeholder="wa.db"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('wa', 'Database files|*.db;*.sqlite|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Media Folder</label>
-                            <input type="text" name="media" placeholder="WhatsApp"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" name="media" placeholder="WhatsApp"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFolder('media')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Backup File (for encrypted)</label>
-                            <input type="text" name="backup" placeholder=""
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" name="backup" placeholder=""
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('backup', 'Encrypted backups|*.crypt12;*.crypt14;*.crypt15|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Key (file path or 64 hex chars)</label>
-                            <input type="text" name="key" placeholder="path/to/key OR a1b2c3d4..."
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" name="key" placeholder="64 hex chars OR click Browse for key file"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('key', 'Key files|*.key;*.bin|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Key Screenshot (OCR extraction)</label>
-                            <input type="text" name="key_image" placeholder="path/to/screenshot.png"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" name="key_image" placeholder=""
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('key_image', 'Images|*.png;*.jpg;*.jpeg;*.bmp|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Exported Chat File</label>
-                            <input type="text" name="exported_file" placeholder="chat.txt"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" name="exported_file" placeholder="chat.txt"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('exported_file', 'Text files|*.txt|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Output Directory</label>
+                            <div class="flex gap-2">
+                                <input type="text" name="output" value="result"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFolder('output')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -183,11 +212,6 @@ GUI_TEMPLATE = r'''
                 <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">Output Options</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">Output Directory</label>
-                            <input type="text" name="output" value="result"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
-                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Timezone Offset</label>
                             <input type="number" name="timezone_offset" value="0" min="-12" max="14"
@@ -408,8 +432,11 @@ GUI_TEMPLATE = r'''
                     <div class="space-y-3">
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Google OAuth client_secret.json path</label>
-                            <input type="text" id="googleSecret" placeholder="C:\path\to\client_secret.json"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" id="googleSecret" placeholder=""
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('googleSecret', 'JSON files|*.json|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                             <p class="text-xs text-gray-400 mt-1">Get one from <a href="https://console.cloud.google.com/apis/credentials" class="text-blue-500 underline" target="_blank">Google Cloud Console</a>: Create project &gt; Enable Drive API &gt; Create OAuth Client ID (Desktop)</p>
                         </div>
                         <button type="button" onclick="startCloudExtraction()"
@@ -450,14 +477,20 @@ GUI_TEMPLATE = r'''
                         <div class="text-center text-gray-400 text-xs">- OR -</div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Key file path</label>
-                            <input type="text" id="connKeyFile" placeholder="C:\path\to\encrypted_backup.key"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" id="connKeyFile" placeholder=""
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('connKeyFile', 'Key files|*.key;*.bin|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
                         <div class="text-center text-gray-400 text-xs">- OR -</div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Screenshot of the key (OCR extraction)</label>
-                            <input type="text" id="connKeyScreenshot" placeholder="C:\path\to\screenshot.png"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                            <div class="flex gap-2">
+                                <input type="text" id="connKeyScreenshot" placeholder=""
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseFile('connKeyScreenshot', 'Images|*.png;*.jpg;*.jpeg;*.bmp|All files|*.*')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
+                            </div>
                         </div>
 
                         <div class="flex gap-3">
@@ -497,11 +530,13 @@ GUI_TEMPLATE = r'''
                     <div class="space-y-4">
                         <div id="dbInputs">
                             <div class="flex gap-2 mb-2 db-input-row">
-                                <input type="text" placeholder="Path to first msgstore.db (oldest)" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <input type="text" placeholder="First msgstore.db (oldest)" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseCompareDb(this)" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
                                 <span class="text-xs text-gray-400 self-center w-16">Oldest</span>
                             </div>
                             <div class="flex gap-2 mb-2 db-input-row">
-                                <input type="text" placeholder="Path to second msgstore.db (newest)" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <input type="text" placeholder="Second msgstore.db (newest)" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+                                <button type="button" onclick="browseCompareDb(this)" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
                                 <span class="text-xs text-gray-400 self-center w-16">Newest</span>
                             </div>
                         </div>
@@ -552,6 +587,36 @@ GUI_TEMPLATE = r'''
     </main>
 
     <script>
+    async function browseFile(fieldName, filter) {
+        try {
+            const resp = await fetch('/api/browse', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mode: 'file', filter: filter || ''})
+            });
+            const result = await resp.json();
+            if (result.path) {
+                const input = document.querySelector(`[name="${fieldName}"]`) || document.getElementById(fieldName);
+                if (input) input.value = result.path;
+            }
+        } catch(e) { console.error('Browse failed:', e); }
+    }
+
+    async function browseFolder(fieldName) {
+        try {
+            const resp = await fetch('/api/browse', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mode: 'folder'})
+            });
+            const result = await resp.json();
+            if (result.path) {
+                const input = document.querySelector(`[name="${fieldName}"]`) || document.getElementById(fieldName);
+                if (input) input.value = result.path;
+            }
+        } catch(e) { console.error('Browse failed:', e); }
+    }
+
     function showTab(name) {
         document.querySelectorAll('[id^="panel-"]').forEach(p => p.classList.add('hidden'));
         document.querySelectorAll('[id^="tab-"]').forEach(t => { t.className = 'tab-inactive pb-3 px-1 text-sm transition-all'; });
@@ -845,12 +910,27 @@ GUI_TEMPLATE = r'''
     }
 
     // Compare DBs handlers
+    async function browseCompareDb(btn) {
+        try {
+            const resp = await fetch('/api/browse', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mode: 'file', filter: 'Database files|*.db;*.crypt12;*.crypt14;*.crypt15|All files|*.*'})
+            });
+            const result = await resp.json();
+            if (result.path) {
+                const input = btn.parentElement.querySelector('.compare-db');
+                if (input) input.value = result.path;
+            }
+        } catch(e) { console.error('Browse failed:', e); }
+    }
+
     function addDbInput() {
         const container = document.getElementById('dbInputs');
         const count = container.querySelectorAll('.db-input-row').length + 1;
         const div = document.createElement('div');
         div.className = 'flex gap-2 mb-2 db-input-row';
-        div.innerHTML = `<input type="text" placeholder="Path to msgstore.db #${count}" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+        div.innerHTML = `<input type="text" placeholder="msgstore.db #${count}" class="compare-db flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-whatsapp/30 focus:border-whatsapp outline-none">
+            <button type="button" onclick="browseCompareDb(this)" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors whitespace-nowrap">Browse</button>
             <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600 text-sm px-2">Remove</button>`;
         container.appendChild(div);
     }
@@ -958,6 +1038,59 @@ def create_app() -> 'Flask':
     @app.route('/')
     def index():
         return render_template_string(GUI_TEMPLATE)
+
+    @app.route('/api/browse', methods=['POST'])
+    def browse_path():
+        """Open a native OS file/folder dialog and return the selected path."""
+        data = request.get_json()
+        mode = data.get('mode', 'file')
+        filter_str = data.get('filter', '')
+
+        def _open_dialog():
+            """Run tkinter dialog in a separate thread to avoid blocking."""
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+
+            if mode == 'folder':
+                path = filedialog.askdirectory(title="Select Folder")
+            else:
+                # Parse filter string: "Label|*.ext1;*.ext2|Label2|*.ext3"
+                filetypes = []
+                if filter_str:
+                    parts = filter_str.split('|')
+                    for i in range(0, len(parts) - 1, 2):
+                        label = parts[i]
+                        exts = parts[i + 1].replace(';', ' ')
+                        filetypes.append((label, exts))
+                if not filetypes:
+                    filetypes = [("All files", "*.*")]
+
+                path = filedialog.askopenfilename(
+                    title="Select File",
+                    filetypes=filetypes
+                )
+
+            root.destroy()
+            return path
+
+        # tkinter must run in main thread on macOS, but on Windows/Linux
+        # we can run it from any thread via a helper
+        try:
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(_open_dialog)
+                path = future.result(timeout=120)
+        except Exception:
+            path = ""
+
+        if path:
+            # Normalize path separators for the OS
+            path = os.path.normpath(path)
+
+        return jsonify({"path": path or ""})
 
     @app.route('/api/export', methods=['POST'])
     def run_export():
