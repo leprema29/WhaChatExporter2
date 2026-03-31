@@ -734,8 +734,12 @@ def determine_metadata(content: sqlite3.Row, init_msg: Optional[str]) -> Optiona
         msg = "Channel update"
     elif content["action_type"] is None:
         # action_type can be NULL in some DB versions
-        if content.get("data"):
-            msg = str(content["data"])
+        try:
+            data_val = content["data"]
+        except (IndexError, KeyError):
+            data_val = None
+        if data_val:
+            msg = str(data_val)
         else:
             msg = None
     else:
